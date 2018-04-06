@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-03-23 12:36:21
+# @Last Modified time: 2018-04-06 20:35:07
 import sys
 import torch
 import visdom
@@ -157,13 +157,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='rsnet', 
                         help='Architecture to use [\'region support network\']')
-    parser.add_argument('--dataset', nargs='?', type=str, default='sceneflow', 
+    parser.add_argument('--dataset', nargs='?', type=str, default='nyu1', 
                         help='Dataset to use [\'sceneflow and kitti etc\']')
-    parser.add_argument('--img_rows', nargs='?', type=int, default=540, 
+    parser.add_argument('--img_rows', nargs='?', type=int, default=480, 
                         help='Height of the input image')
-    parser.add_argument('--img_cols', nargs='?', type=int, default=960, 
+    parser.add_argument('--img_cols', nargs='?', type=int, default=640, 
                         help='Width of the input image')
-    parser.add_argument('--n_epoch', nargs='?', type=int, default=100, 
+    parser.add_argument('--n_epoch', nargs='?', type=int, default=4000, 
                         help='# of the epochs')
     parser.add_argument('--batch_size', nargs='?', type=int, default=4, 
                         help='Batch Size')
@@ -171,7 +171,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1, 
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSN/rsnet_sceneflow_best_model.pkl',    
+    parser.add_argument('--resume', nargs='?', type=str, default=None,    
                         help='Path to previous saved model to restart from')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True, 
                         help='Show visualization(s) on visdom | False by  default')

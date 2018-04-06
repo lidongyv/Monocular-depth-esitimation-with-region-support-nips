@@ -11,6 +11,7 @@ def get_loader(name):
     print(name)
     return {
         'sceneflow': SceneFlow,
+        'nyu1':NYU1,
     }[name]
 
 
