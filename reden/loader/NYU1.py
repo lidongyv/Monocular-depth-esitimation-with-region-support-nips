@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-05 16:40:51
+# @Last Modified time: 2018-04-05 22:33:16
 
 import os
 import torch
@@ -27,21 +27,14 @@ class NYU1(data.Dataset):
         """
         self.root = root
         self.split = split
+        self.num=0
         self.is_transform = is_transform
         self.n_classes = 9  # 0 is reserved for "other"
         self.img_size = img_size if isinstance(img_size, tuple) else (540, 960)
         self.mean = np.array([104.00699, 116.66877, 122.67892])
-        self.files = {}
-
-        self.li = os.path.join(self.root,self.split,'li')
-        self.ld = os.path.join(self.root,self.split,'ld')
-        self.lr = os.path.join(self.root,self.split,'lr')
-
-        self.files['li'] = recursive_glob(rootdir=self.li, suffix='.png')
-        self.files['ld'] = recursive_glob(rootdir=self.ld, suffix='.pfm')
-        self.files['lr'] = recursive_glob(rootdir=self.lr, suffix='.png')
-        if not self.files['ld']:
-            raise Exception("No files for ld=[%s] found in %s" % (split, self.ld))
+        self.data=np.load('')
+        if not self.data:
+            raise Exception("No files for ld=[%s] found in %s" % (split, self.root))
 
         print("Found %d %s images" % (len(self.files['ld']), split))
 
