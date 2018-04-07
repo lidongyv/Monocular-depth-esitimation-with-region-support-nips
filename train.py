@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 16:45:36
+# @Last Modified time: 2018-04-07 19:21:19
 import sys
 import torch
 import visdom
@@ -83,6 +83,7 @@ def train(args):
     else:
         loss_fn = l1
     trained=0
+    scale=100
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
@@ -99,6 +100,7 @@ def train(args):
     best_rate=100
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
+        print('training!')
         model.train()
         for i, (images, labels) in enumerate(trainloader):
             images = Variable(images.cuda())
@@ -127,8 +129,6 @@ def train(args):
                     pre,
                     opts=dict(title='predict!', caption='predict.'),
                     win=pre_window,
-
-
                 )
 
             # if i%100==0:
@@ -136,9 +136,11 @@ def train(args):
             #              'model_state': model.state_dict(),
             #              'optimizer_state' : optimizer.state_dict(),}
             #     torch.save(state, "training_{}_{}_model.pkl".format(i, args.dataset))
-
-            print("data [%d/%d] Loss: %.4f" % (i, args.n_epoch, loss.data[0]))
-
+            # if loss.data[0]/weight<100:
+            # 	weight=100
+            # else if(loss.data[0]/weight<100)
+            print("data [%d/503/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.data[0]))
+        print('testing!')
         model.eval()
         error=[]
         error_rate=[]
@@ -151,11 +153,11 @@ def train(args):
             outputs = model(images_val)
             pred = outputs.data.cpu().numpy()
             gt = labels_val.data.cpu().numpy()
-            pred=np.reshape(pred,[480,640])
-            gt=np.reshape(gt,[480,640])
-            dis=np.abs(gt-dis)
+            pred=np.reshape(pred,[4,480,640])
+            gt=np.reshape(gt,[4,480,640])
+            dis=np.abs(gt-pred)
             error.append(np.mean(dis))
-            error_rate.append(np.mean(np.where(dis<0.05),ones,zeros))
+            error_rate.append(np.mean(np.where(dis<0.05,ones,zeros)))
         error=np.mean(error)
         error_rate=np.mean(error_rate)
         print("error=%.4f,error < 5 cm : %.4f"%(error,error_rate))
