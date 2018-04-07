@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 20:02:57
+# @Last Modified time: 2018-04-07 21:49:00
 
 import torch
 import numpy as np
@@ -44,51 +44,68 @@ class rsn(nn.Module):
                                                  padding=1, stride=1, bias=False)
         self.convbnrelu1_2 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
-        self.convbnrelu1_3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=128,
+        self.convbnrelu1_3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
 
         # Vanilla Residual Blocks
-        self.res_block2 = residualBlockPSP(self.block_config[0], 128, 64, 256, 1, 1)
-        self.res_block3 = residualBlockPSP(self.block_config[1], 256, 128, 512, 1, 1)
+        self.res_block2 = residualBlockPSP(self.block_config[0], 64, 32, 128, 1, 1)
+        self.res_block3 = residualBlockPSP(self.block_config[1], 128, 64, 128, 2, 1)
         
         # Dilated Residual Blocks
-        self.res_block4 = residualBlockPSP(self.block_config[2], 512, 256, 1024, 1, 2)
-        self.res_block5 = residualBlockPSP(self.block_config[3], 1024, 512, 2048, 1, 4)
-        
+        self.res_block4 = residualBlockPSP(self.block_config[2], 128, 64, 128, 1, 2)
+        self.res_block5 = residualBlockPSP(self.block_config[3], 128, 64, 256, 1, 4)
+
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(2048, [32,16,8,6,3,2])
+        self.pyramid_pooling = pyramidPooling(256, [128,64,32,16,8,6,3,2])
        
         # Final conv layers
-        self.cbr_final = conv2DBatchNormRelu(4094, 512, 3, 1, 1, False)
-        self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.classification = nn.Conv2d(512, 1, 1, 1, 0)
-
+        #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
+        #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
+        self.deconv0 = conv2DBatchNormRelu(in_channels=512, k_size=3, n_filters=256,
+                                                padding=1, stride=1, bias=False)        
+        self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+                                                padding=1, stride=1, bias=False)
+        self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
+                                                stride=2, padding=1, output_padding=1 ,bias=False)
+        self.regress1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+                                                 padding=1, stride=1, bias=False)
+        self.regress2 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
+                                                 padding=1, stride=1, bias=False)
+        self.regress3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
+                                                 padding=1, stride=1, bias=False)
+        self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=1,
+                                                 padding=1, stride=1, bias=False)                                                                 
     def forward(self, x):
         inp_shape = x.shape[2:]
 
-        # H, W -> H/2, W/2
+
         x = self.convbnrelu1_1(x)
         x = self.convbnrelu1_2(x)
         x = self.convbnrelu1_3(x)
-
-        # H/2, W/2 -> H/4, W/4
-        x = F.max_pool2d(x, 3, 2, 1)
-
-        # H/4, W/4 -> H/8, W/8
-        x = self.res_block2(x)
-        x = self.res_block3(x)
+        x1 = self.res_block2(x)
+        # H, W -> H/2, W/2 
+        x = self.res_block3(x1)      
         x = self.res_block4(x)
         x = self.res_block5(x)
 
         x = self.pyramid_pooling(x)
 
-        x = self.cbr_final(x)
-        x = self.dropout(x)
-
-        x = self.classification(x)
-        x = F.upsample(x, size=inp_shape, mode='bilinear') 
+        #x = self.cbr_final(x)
+        #x = self.dropout(x)
+        x = self.deconv0(x)
+     
+        x = self.deconv1(x)
+       
+        x2 = self.deconv2(x)
+       
+        x=torch.cat((x2,x1),1)
+        #128+128
+        x=self.regress1(x)
+        x=self.regress2(x)
+        x=self.regress3(x)
+        x=self.final(x)
         return x
 
     def load_pretrained_model(self, model_path):

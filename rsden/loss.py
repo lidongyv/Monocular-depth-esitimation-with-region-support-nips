@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 19:07:13
+# @Last Modified time: 2018-04-08 00:17:54
 
 import torch
 import numpy as np
@@ -33,6 +33,6 @@ def cross_entropy2d(input, target, weight=None, size_average=True):
 def l1(input, target, weight=None, size_average=True):
     loss=nn.L1Loss()
     output=loss(input,target)
-    output=output
+    #output=output
     return output
 

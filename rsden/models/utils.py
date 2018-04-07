@@ -38,7 +38,7 @@ class deconv2DBatchNorm(nn.Module):
 
 
 class conv2DBatchNormRelu(nn.Module):
-    def __init__(self, in_channels, n_filters, k_size,  stride, padding, bias=True, dilation=1):
+    def __init__(self, in_channels, n_filters, k_size,  stride, padding=0, bias=True, dilation=1):
         super(conv2DBatchNormRelu, self).__init__()
 
         if dilation > 1:
@@ -59,11 +59,11 @@ class conv2DBatchNormRelu(nn.Module):
 
 
 class deconv2DBatchNormRelu(nn.Module):
-    def __init__(self, in_channels, n_filters, k_size, stride, padding, bias=True):
+    def __init__(self, in_channels, n_filters, k_size, stride,output_padding=0, padding=0, bias=True):
         super(deconv2DBatchNormRelu, self).__init__()
 
         self.dcbr_unit = nn.Sequential(nn.ConvTranspose2d(int(in_channels), int(n_filters), kernel_size=k_size,
-                                                padding=padding, stride=stride, bias=bias),
+                                                padding=padding, stride=stride, bias=bias,output_padding=output_padding),
                                  nn.BatchNorm2d(int(n_filters)),
                                  nn.ReLU(inplace=True),)
 
@@ -359,7 +359,7 @@ class pyramidPooling(nn.Module):
     def forward(self, x):
         output_slices = [x]
         h, w = x.shape[2:]
-
+        #print(h,w)
         for module, pool_size in zip(self.path_module_list, self.pool_sizes): 
             out = F.avg_pool2d(x, (int(h/pool_size), int(w/pool_size)))
             #print(pool_size)
