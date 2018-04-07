@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 15:08:05
+# @Last Modified time: 2018-04-07 15:09:43
 import sys
 import torch
 import visdom
@@ -16,11 +16,11 @@ from torch.autograd import Variable
 from torch.utils import data
 from tqdm import tqdm
 
-from rsnet.models import get_model
-from rsnet.loader import get_loader, get_data_path
-from rsnet.metrics import runningScore
-from rsnet.loss import *
-from rsnet.augmentations import *
+from rsden.models import get_model
+from rsden.loader import get_loader, get_data_path
+from rsden.metrics import runningScore
+from rsden.loss import *
+from rsden.augmentations import *
 import os
 
 
