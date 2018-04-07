@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 17:11:29
+# @Last Modified time: 2018-04-07 20:02:57
 
 import torch
 import numpy as np
@@ -41,7 +41,7 @@ class rsn(nn.Module):
         
         # Encoder
         self.convbnrelu1_1 = conv2DBatchNormRelu(in_channels=3, k_size=3, n_filters=64,
-                                                 padding=1, stride=2, bias=False)
+                                                 padding=1, stride=1, bias=False)
         self.convbnrelu1_2 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
         self.convbnrelu1_3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=128,
@@ -49,7 +49,7 @@ class rsn(nn.Module):
 
         # Vanilla Residual Blocks
         self.res_block2 = residualBlockPSP(self.block_config[0], 128, 64, 256, 1, 1)
-        self.res_block3 = residualBlockPSP(self.block_config[1], 256, 128, 512, 2, 1)
+        self.res_block3 = residualBlockPSP(self.block_config[1], 256, 128, 512, 1, 1)
         
         # Dilated Residual Blocks
         self.res_block4 = residualBlockPSP(self.block_config[2], 512, 256, 1024, 1, 2)
