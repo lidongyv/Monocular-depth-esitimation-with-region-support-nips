@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-06 20:35:07
+# @Last Modified time: 2018-04-07 14:55:43
 import sys
 import torch
 import visdom
@@ -74,7 +74,7 @@ def train(args):
         print('Using custom loss')
         loss_fn = model.module.loss
     else:
-        loss_fn = cross_entropy2d
+        loss_fn = l1
 
     if args.resume is not None:                                         
         if os.path.isfile(args.resume):
