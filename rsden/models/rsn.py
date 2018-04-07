@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 15:12:12
+# @Last Modified time: 2018-04-07 17:11:29
 
 import torch
 import numpy as np
@@ -56,13 +56,14 @@ class rsn(nn.Module):
         self.res_block5 = residualBlockPSP(self.block_config[3], 1024, 512, 2048, 1, 4)
         
         # Pyramid Pooling Module
+        #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(2048, [64,48, 32,16,8,6,4, 2])
+        self.pyramid_pooling = pyramidPooling(2048, [32,16,8,6,3,2])
        
         # Final conv layers
-        self.cbr_final = conv2DBatchNormRelu(4096, 512, 3, 1, 1, False)
+        self.cbr_final = conv2DBatchNormRelu(4094, 512, 3, 1, 1, False)
         self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.classification = nn.Conv2d(512, self.n_classes, 1, 1, 0)
+        self.classification = nn.Conv2d(512, 1, 1, 1, 0)
 
     def forward(self, x):
         inp_shape = x.shape[2:]

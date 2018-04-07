@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 15:19:46
+# @Last Modified time: 2018-04-07 17:07:29
 
 import os
 import torch
@@ -48,7 +48,7 @@ class NYU1(data.Dataset):
         :param index:
         """
 
-        img = self.data[index][0:2,:,:]
+        img = self.data[index][0:3,:,:]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
@@ -89,6 +89,6 @@ class NYU1(data.Dataset):
         #    raise ValueError("Segmentation map contained invalid class values")
 
         img = torch.from_numpy(img).float()
-        region = torch.from_numpy(region).long()
+        region = torch.from_numpy(region).float()
 
         return img, region
