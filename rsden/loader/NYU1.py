@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-06 20:49:32
+# @Last Modified time: 2018-04-07 15:19:46
 
 import os
 import torch
@@ -11,7 +11,7 @@ import scipy.misc as m
 import cv2
 from torch.utils import data
 from python_pfm import *
-from rsnet.utils import recursive_glob
+from rsden.utils import recursive_glob
 
 
 class NYU1(data.Dataset):
@@ -33,7 +33,7 @@ class NYU1(data.Dataset):
         self.img_size = img_size if isinstance(img_size, tuple) else (480, 640)
         self.mean = np.array([104.00699, 116.66877, 122.67892])
         self.data=np.load(root+split+'.npy')
-        if not self.data:
+        if not self.data[0,0,0,0]:
             raise Exception("No files for ld=[%s] found in %s" % (split, self.root))
 
         print("Found %d in %s images" % (len(self.data), split))
@@ -48,11 +48,11 @@ class NYU1(data.Dataset):
         :param index:
         """
 
-        img = self.data(index,0:2,:,:)
+        img = self.data[index][0:2,:,:]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        region = self.data(index,3,:,:)
+        region = self.data[index][3,:,:]
 
         if self.is_transform:
             img, region = self.transform(img, region)

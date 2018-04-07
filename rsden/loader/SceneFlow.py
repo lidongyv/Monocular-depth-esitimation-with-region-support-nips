@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-03-19 13:33:07
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-03-22 17:35:56
+# @Last Modified time: 2018-04-07 15:14:04
 
 import os
 import torch
@@ -11,7 +11,7 @@ import scipy.misc as m
 import cv2
 from torch.utils import data
 from python_pfm import *
-from rsnet.utils import recursive_glob
+from rsden.utils import recursive_glob
 
 
 class SceneFlow(data.Dataset):

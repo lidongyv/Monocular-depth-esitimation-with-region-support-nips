@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-03-22 22:48:49
+# @Last Modified time: 2018-04-07 15:12:12
 
 import torch
 import numpy as np
@@ -11,8 +11,8 @@ import torch.nn as nn
 from math import ceil
 from torch.autograd import Variable
 
-from rsnet import caffe_pb2
-from rsnet.models.utils import *
+from rsden import caffe_pb2
+from rsden.models.utils import *
 
 rsn_specs = {
     'scene': 

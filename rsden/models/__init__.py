@@ -2,11 +2,11 @@
 # @Author: yulidong
 # @Date:   2018-03-18 15:24:33
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-03-22 13:53:28
+# @Last Modified time: 2018-04-07 15:11:34
 
 import torchvision.models as models
 
-from rsnet.models.rsn import *
+from rsden.models.rsn import *
 
 
 def get_model(name, n_classes):

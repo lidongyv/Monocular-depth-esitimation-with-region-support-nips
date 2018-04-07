@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 15:09:43
+# @Last Modified time: 2018-04-07 16:06:19
 import sys
 import torch
 import visdom
@@ -82,7 +82,7 @@ def train(args):
         loss_fn = model.module.loss
     else:
         loss_fn = l1
-
+    trained=0
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
@@ -91,12 +91,14 @@ def train(args):
             optimizer.load_state_dict(checkpoint['optimizer_state'])
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
+            trained=checkpoint['epoch']
         else:
             print("No checkpoint found at '{}'".format(args.resume))
 
-    best_iou = -100.0
+    best_error=100
+    best_rate=100
     # it should be range(checkpoint[''epoch],args.n_epoch)
-    for epoch in range(checkpoint['epoch'], args.n_epoch):
+    for epoch in range(trained, args.n_epoch):
         model.train()
         for i, (images, labels) in enumerate(trainloader):
             images = Variable(images.cuda())
@@ -118,8 +120,8 @@ def train(args):
                     update='append')
                 pre = outputs.data.cpu().numpy().astype('float32')
                 pre = pre[0, :, :, :]
-                pre = np.argmax(pre, 0)
-                pre = np.reshape(pre, [540, 960]).astype('float32')/9
+                #pre = np.argmax(pre, 0)
+                pre = np.reshape(pre, [480, 640]).astype('float32')/np.max(pre)
                 # print(type(pre[0,0]))
                 vis.image(
                     pre,
@@ -138,19 +140,21 @@ def train(args):
             print("data [%d/%d] Loss: %.4f" % (i, args.n_epoch, loss.data[0]))
 
         model.eval()
+        error=[]
+        error_rate=[]
         for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
             images_val = Variable(images_val.cuda(), volatile=True)
             labels_val = Variable(labels_val.cuda(), volatile=True)
 
             outputs = model(images_val)
-            pred = outputs.data.max(1)[1].cpu().numpy()
+            pred = outputs.data.cpu().numpy()
             gt = labels_val.data.cpu().numpy()
-            running_metrics.update(gt, pred)
+            pred=np.reshape(pred,[480,640])
+            gt=np.reshape(gt,[480,640])
+            dis=np.abs(gt-dis)
+            
 
-        score, class_iou = running_metrics.get_scores()
-        for k, v in score.items():
-            print(k, v)
-        running_metrics.reset()
+
 
         if score['Mean IoU : \t'] >= best_iou:
             best_iou = score['Mean IoU : \t']

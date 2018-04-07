@@ -1,7 +1,7 @@
 import json
 
-from rsnet.loader.SceneFlow import SceneFlow
-
+from rsden.loader.SceneFlow import SceneFlow
+from rsden.loader.NYU1 import NYU1
 
 def get_loader(name):
     """get_loader
