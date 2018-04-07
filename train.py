@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 16:06:19
+# @Last Modified time: 2018-04-07 16:45:36
 import sys
 import torch
 import visdom
@@ -142,6 +142,8 @@ def train(args):
         model.eval()
         error=[]
         error_rate=[]
+        ones=np.ones([480,640])
+        zeros=np.zeros([480,640])
         for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
             images_val = Variable(images_val.cuda(), volatile=True)
             labels_val = Variable(labels_val.cuda(), volatile=True)
@@ -152,12 +154,13 @@ def train(args):
             pred=np.reshape(pred,[480,640])
             gt=np.reshape(gt,[480,640])
             dis=np.abs(gt-dis)
-            
-
-
-
-        if score['Mean IoU : \t'] >= best_iou:
-            best_iou = score['Mean IoU : \t']
+            error.append(np.mean(dis))
+            error_rate.append(np.mean(np.where(dis<0.05),ones,zeros))
+        error=np.mean(error)
+        error_rate=np.mean(error_rate)
+        print("error=%.4f,error < 5 cm : %.4f"%(error,error_rate))
+        if error<= best_error:
+            best_error = error
             state = {'epoch': epoch+1,
                      'model_state': model.state_dict(),
                      'optimizer_state': optimizer.state_dict(), }
