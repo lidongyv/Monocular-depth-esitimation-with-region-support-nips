@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 21:49:00
+# @Last Modified time: 2018-04-08 10:50:35
 
 import torch
 import numpy as np
@@ -59,7 +59,7 @@ class rsn(nn.Module):
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
         self.pyramid_pooling = pyramidPooling(256, [128,64,32,16,8,6,3,2])
-       
+        self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
@@ -89,7 +89,7 @@ class rsn(nn.Module):
         x = self.res_block3(x1)      
         x = self.res_block4(x)
         x = self.res_block5(x)
-
+        y = self.global_pooling(x)
         x = self.pyramid_pooling(x)
 
         #x = self.cbr_final(x)
@@ -106,7 +106,7 @@ class rsn(nn.Module):
         x=self.regress2(x)
         x=self.regress3(x)
         x=self.final(x)
-        return x
+        return x+y
 
     def load_pretrained_model(self, model_path):
         """
