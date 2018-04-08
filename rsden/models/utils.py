@@ -56,8 +56,41 @@ class conv2DBatchNormRelu(nn.Module):
     def forward(self, inputs):
         outputs = self.cbr_unit(inputs)
         return outputs
+class conv2D(nn.Module):
+    def __init__(self, in_channels, n_filters, k_size,  stride, padding=0, bias=True, dilation=1):
+        super(conv2DBatchNormRelu, self).__init__()
 
+        if dilation > 1:
+            conv_mod = nn.Conv2d(int(in_channels), int(n_filters), kernel_size=k_size, 
+                                 padding=padding, stride=stride, bias=bias, dilation=dilation)
 
+        else:
+            conv_mod = nn.Conv2d(int(in_channels), int(n_filters), kernel_size=k_size, 
+                                 padding=padding, stride=stride, bias=bias, dilation=1)
+
+        self.cbr_unit = nn.Sequential(conv_mod,)
+
+    def forward(self, inputs):
+        outputs = self.cbr_unit(inputs)
+        return outputs
+class conv2DRelu(nn.Module):
+    def __init__(self, in_channels, n_filters, k_size,  stride, padding=0, bias=True, dilation=1):
+        super(conv2DBatchNormRelu, self).__init__()
+
+        if dilation > 1:
+            conv_mod = nn.Conv2d(int(in_channels), int(n_filters), kernel_size=k_size, 
+                                 padding=padding, stride=stride, bias=bias, dilation=dilation)
+
+        else:
+            conv_mod = nn.Conv2d(int(in_channels), int(n_filters), kernel_size=k_size, 
+                                 padding=padding, stride=stride, bias=bias, dilation=1)
+
+        self.cbr_unit = nn.Sequential(conv_mod,
+                                      nn.ReLU(inplace=True),)
+
+    def forward(self, inputs):
+        outputs = self.cbr_unit(inputs)
+        return outputs
 class deconv2DBatchNormRelu(nn.Module):
     def __init__(self, in_channels, n_filters, k_size, stride,output_padding=0, padding=0, bias=True):
         super(deconv2DBatchNormRelu, self).__init__()
@@ -355,20 +388,67 @@ class pyramidPooling(nn.Module):
 
         self.path_module_list = nn.ModuleList(self.paths)
         self.pool_sizes = pool_sizes
-#without conv
+
     def forward(self, x):
         output_slices = [x]
         h, w = x.shape[2:]
         #print(h,w)
         for module, pool_size in zip(self.path_module_list, self.pool_sizes): 
-            out = F.adaptive_avg_pool2d(x, ((int(h/pool_size), int(w/pool_size))))
+            out = F.adaptive_avg_pool2d(x, ((int(h/pool_size[0]), int(w/pool_size[1]))))
             #print(pool_size)
             out = module(out)
             out = F.upsample(out, size=(h,w), mode='bilinear')
             output_slices.append(out)
 
         return torch.cat(output_slices, dim=1)
+class globalPooling(nn.Module):
 
+    def __init__(self, in_channels, pool_sizes):
+        super(globalPooling, self).__init__()
+        self.de1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=512,
+                                                padding=1, stride=2, bias=False)
+        self.de2 = conv2DBatchNormRelu(in_channels=512, k_size=3, n_filters=1024,
+                                        padding=1, stride=2, bias=False)
+        self.de3 = conv2DBatchNormRelu(in_channels=1024, k_size=3, n_filters=2048,
+                                        padding=1, stride=2, bias=False)
+        self.de4 = conv2DBatchNormRelu(in_channels=2048, k_size=3, n_filters=2048,
+                                        padding=1, stride=2, bias=False)
+        self.de5 = conv2DBatchNormRelu(in_channels=2048, k_size=3, n_filters=2048,
+                                        padding=1, stride=2, bias=False)
+        self.final1 = conv2DRelu(in_channels=2048, k_size=1, n_filters=1024,
+                                        padding=0, stride=1, bias=False)
+        self.final2 = conv2DRelu(in_channels=1024, k_size=1, n_filters=512,
+                                        padding=0, stride=1, bias=False)
+        self.final3 = conv2DRelu(in_channels=512, k_size=1, n_filters=256,
+                                        padding=0, stride=1, bias=False)
+        self.final4 = conv2DRelu(in_channels=256, k_size=1, n_filters=128,
+                                        padding=0, stride=1, bias=False) 
+        self.final5 = conv2DRelu(in_channels=128, k_size=1, n_filters=64,
+                                        padding=0, stride=1, bias=False)
+        self.final6 = conv2D(in_channels=64, k_size=1, n_filters=32,
+                                        padding=0, stride=1, bias=False) 
+        self.final7 = conv2D(in_channels=32, k_size=1, n_filters=1,
+                                        padding=0, stride=1, bias=False)                                                                                                                                                                                                                                                                                                          
+    def forward(self, x):
+        h, w = x.shape[2:]
+        x=self.de1(x)
+        x=self.de2(x)
+        x=self.de3(x)
+        x=self.de4(x)
+        x=self.de5(x)
+        #print(h,w)
+        out = F.adaptive_avg_pool2d(x, ((1, 1)))
+        out=self.final1(out)
+        out=self.final2(out)
+        out=self.final3(out)
+        out=self.final4(out)
+        out=self.final5(out)
+        out=self.final6(out)
+        out=self.final7(out)
+        out = F.upsample(out, size=(h,w), mode='nearest')
+
+
+        return out
 
 class bottleNeckPSP(nn.Module):
     
