@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 12:57:40
+# @Last Modified time: 2018-04-09 16:21:28
 
 import torch
 import numpy as np
@@ -49,6 +49,10 @@ class rsn(nn.Module):
 
         # Vanilla Residual Blocks
         self.res_block2 = residualBlockPSP(self.block_config[0], 64, 32, 128, 1, 1)
+        self.full1=conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
+                                                padding=1, stride=1, bias=False)
+        self.full2=conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
+                                                padding=1, stride=1, bias=False)        
         self.res_block3 = residualBlockPSP(self.block_config[1], 128, 64, 128, 2, 1)
         
         # Dilated Residual Blocks
@@ -58,21 +62,21 @@ class rsn(nn.Module):
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(256, [[120,160],[60,80],[30,40],[48,64],[24,32],[12,16],[6,8],[3,4]])
+        self.pyramid_pooling = pyramidPooling(256, [[240,320],[120,160],[60,80],[30,40],[48,64],[24,32],[12,16],[3,4]])
         self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DBatchNormRelu(in_channels=512, k_size=3, n_filters=256,
+        self.deconv0 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                 padding=1, stride=1, bias=False)        
-        self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-                                                padding=1, stride=1, bias=False)
+        # self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+        #                                         padding=1, stride=1, bias=False)
         self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
                                                 stride=2, padding=1, output_padding=1 ,bias=False)
-        self.regress1 = conv2DRelu(in_channels=256, k_size=3, n_filters=128,
+        self.regress1 = conv2DRelu(in_channels=160, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
-        self.regress2 = conv2DRelu(in_channels=128, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False)
+        # self.regress2 = conv2DRelu(in_channels=128, k_size=3, n_filters=64,
+        #                                          padding=1, stride=1, bias=False)
         self.regress3 = conv2D(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)
         self.final = conv2D(in_channels=32, k_size=3, n_filters=1,
@@ -85,11 +89,12 @@ class rsn(nn.Module):
         x = self.convbnrelu1_2(x)
         x = self.convbnrelu1_3(x)
         x1 = self.res_block2(x)
+        x1=self.full1(x1)
+        x1=self.full2(x1)
         # H, W -> H/2, W/2 
         x = self.res_block3(x1)      
         x = self.res_block4(x)
         x = self.res_block5(x)
-        y = self.global_pooling(x)
         x = self.pyramid_pooling(x)
 
         #x = self.cbr_final(x)
@@ -103,10 +108,11 @@ class rsn(nn.Module):
         x=torch.cat((x,x1),1)
         #128+128
         x=self.regress1(x)
-        x=self.regress2(x)
-        x=self.regress3(x)
+        #x=self.regress2(x)
+        x2=self.regress3(x)
         x=self.final(x)
-        return x+y
+        y = self.global_pooling(x2)        
+        return (x+y,y)
 
     def load_pretrained_model(self, model_path):
         """

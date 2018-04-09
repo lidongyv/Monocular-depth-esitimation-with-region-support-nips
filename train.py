@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-08 00:22:27
+# @Last Modified time: 2018-04-09 15:19:26
 import sys
 import torch
 import visdom
@@ -58,10 +58,13 @@ def train(args):
                                          title='Training Loss',
                                          legend=['Loss']))
         pre_window = vis.image(
-            np.random.rand(540, 960),
+            np.random.rand(480, 640),
             opts=dict(title='predict!', caption='predict.'),
         )
-
+        ground_window = vis.image(
+            np.random.rand(480, 640),
+            opts=dict(title='ground!', caption='ground.'),
+        )
     # Setup Model
     model = get_model(args.arch, n_classes)
     model = torch.nn.DataParallel(
@@ -108,7 +111,7 @@ def train(args):
 
             optimizer.zero_grad()
             outputs = model(images)
-
+            outputs=outputs
             loss = loss_fn(input=outputs, target=labels)
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
             loss.backward()
@@ -120,17 +123,26 @@ def train(args):
                     Y=torch.Tensor([loss.data[0]]).unsqueeze(0).cpu()[0],
                     win=loss_window,
                     update='append')
-                pre = outputs.data.cpu().numpy().astype('float32')
+                pre = outputs[0].data.cpu().numpy().astype('float32')
                 pre = pre[0, :, :, :]
                 #pre = np.argmax(pre, 0)
                 pre = np.reshape(pre, [480, 640]).astype('float32')/np.max(pre)
+                #pre = pre/np.max(pre)
                 # print(type(pre[0,0]))
                 vis.image(
                     pre,
                     opts=dict(title='predict!', caption='predict.'),
                     win=pre_window,
                 )
-
+                ground=labels.data.cpu().numpy().astype('float32')
+                #print(ground.shape)
+                ground = ground[0, :, :]
+                ground = np.reshape(ground, [480, 640]).astype('float32')/np.max(ground)
+                vis.image(
+                    ground,
+                    opts=dict(title='ground!', caption='ground.'),
+                    win=ground_window,
+                )
             # if i%100==0:
             #     state = {'epoch': epoch,
             #              'model_state': model.state_dict(),
@@ -150,7 +162,7 @@ def train(args):
             images_val = Variable(images_val.cuda(), volatile=True)
             labels_val = Variable(labels_val.cuda(), volatile=True)
 
-            outputs = model(images_val)
+            outputs = model(images_val)[0]
             pred = outputs.data.cpu().numpy()
             gt = labels_val.data.cpu().numpy()
             pred=np.reshape(pred,[4,480,640])
@@ -188,8 +200,8 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl',
-                        help='Path to previous saved model to restart from')
+    parser.add_argument('--resume', nargs='?', type=str, default=None,
+                        help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')
     args = parser.parse_args()
