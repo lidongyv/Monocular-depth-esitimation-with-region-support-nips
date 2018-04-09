@@ -384,7 +384,8 @@ class pyramidPooling(nn.Module):
 
         self.paths = []
         for i in range(len(pool_sizes)):
-            self.paths.append(conv2DBatchNormRelu(in_channels, int(in_channels / len(pool_sizes)), 1, 1, 0, bias=False))
+            self.paths.append(conv2DBatchNormRelu(in_channels=in_channels, k_size=3, n_filters=int(in_channels / len(pool_sizes)),
+                                                padding=1, stride=1, bias=False))
 
         self.path_module_list = nn.ModuleList(self.paths)
         self.pool_sizes = pool_sizes

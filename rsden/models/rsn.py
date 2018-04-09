@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 19:46:25
+# @Last Modified time: 2018-04-09 20:16:43
 
 import torch
 import numpy as np
@@ -13,7 +13,7 @@ from torch.autograd import Variable
 
 from rsden import caffe_pb2
 from rsden.models.utils import *
-
+from rsden.modles.resnet import *
 rsn_specs = {
     'scene': 
     {
@@ -73,13 +73,13 @@ class rsn(nn.Module):
         #                                          padding=1, stride=1, bias=False)
         self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
                                                  stride=2, padding=1, output_padding=1 ,bias=False)
-        self.regress1 = conv2DRelu(in_channels=160, k_size=3, n_filters=64,
+        self.regress1 = conv2DBatchNormRelu(in_channels=160, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
         # self.regress2 = conv2DRelu(in_channels=128, k_size=3, n_filters=64,
         #                                           padding=1, stride=1, bias=False)
-        self.regress3 = conv2D(in_channels=64, k_size=3, n_filters=32,
+        self.regress3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)
-        self.final = conv2D(in_channels=32, k_size=3, n_filters=1,
+        self.final = conv2DRelu(in_channels=32, k_size=3, n_filters=1,
                                                  padding=1, stride=1, bias=False)                                                                 
     def forward(self, x):
         inp_shape = x.shape[2:]
@@ -109,8 +109,8 @@ class rsn(nn.Module):
         #128+128
         x=self.regress1(x)
         #x=self.regress2(x)
-        x2=self.regress3(x)
-        x=self.final(x2)
+        x=self.regress3(x)
+        x=self.final(x)
         #y = self.global_pooling(x2)        
         return x
     def load_pretrained_model(self, model_path):

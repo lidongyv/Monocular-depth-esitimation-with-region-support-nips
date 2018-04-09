@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 16:36:33
+# @Last Modified time: 2018-04-09 20:01:36
 
 import torch
 import numpy as np
@@ -33,8 +33,8 @@ def cross_entropy2d(input, target, weight=None, size_average=True):
 def l1(input, target, weight=None, size_average=True):
     loss=nn.L1Loss()
     relation=loss(input,target)
-    mean=torch.abs(torch.mean(input)-torch.mean(target))
-    print("pre_depth:%.4f,ground_depth:%.4f"%(torch.mean(input[1]).data.cpu().numpy().astype('float32'),torch.mean(target).data.cpu().numpy().astype('float32')))
-    output=relation+0.2*mean
-    return output
+    #mean=torch.abs(torch.mean(input)-torch.mean(target))
+    #print("pre_depth:%.4f,ground_depth:%.4f"%(torch.mean(input[1]).data.cpu().numpy().astype('float32'),torch.mean(target).data.cpu().numpy().astype('float32')))
+    #output=relation+0.2*mean
+    return relation
 
