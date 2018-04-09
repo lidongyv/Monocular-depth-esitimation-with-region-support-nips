@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-08 16:55:39
+# @Last Modified time: 2018-04-09 12:57:40
 
 import torch
 import numpy as np
@@ -98,9 +98,9 @@ class rsn(nn.Module):
      
         x = self.deconv1(x)
        
-        x2 = self.deconv2(x)
+        x = self.deconv2(x)
        
-        x=torch.cat((x2,x1),1)
+        x=torch.cat((x,x1),1)
         #128+128
         x=self.regress1(x)
         x=self.regress2(x)
