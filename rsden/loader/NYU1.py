@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 17:07:29
+# @Last Modified time: 2018-04-09 19:01:22
 
 import os
 import torch
@@ -12,7 +12,7 @@ import cv2
 from torch.utils import data
 from python_pfm import *
 from rsden.utils import recursive_glob
-
+import torchvision.transforms as transforms
 
 class NYU1(data.Dataset):
 
@@ -66,13 +66,20 @@ class NYU1(data.Dataset):
         :param region:
         """
         img = img[:, :,:]
+
         img = img.astype(np.float64)
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
-        img = img.astype(float) / 255.0
+        #img = torch.from_numpy(img).float()
+        region = torch.from_numpy(region).float()
+        #img = img.astype(float) / 255.0
         # NHWC -> NCHW
-        #img = img.transpose(2, 0, 1)
-
+        img = img.transpose(1,2,0)
+        totensor=transforms.ToTensor()
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+        img=totensor(img)
+        img=normalize(img)
         #region=region[0,:,:]
         #region = region.astype(float)/32
         #region = np.round(region)
@@ -88,7 +95,6 @@ class NYU1(data.Dataset):
         #if not np.all(classes < self.n_classes):
         #    raise ValueError("Segmentation map contained invalid class values")
 
-        img = torch.from_numpy(img).float()
-        region = torch.from_numpy(region).float()
+
 
         return img, region

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 16:35:39
+# @Last Modified time: 2018-04-09 19:46:25
 
 import torch
 import numpy as np
@@ -62,7 +62,7 @@ class rsn(nn.Module):
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(256, [[120,160],[60,80],[30,40],[48,64],[24,32],[12,16],[3,4],[1,1]])
+        self.pyramid_pooling = pyramidPooling(256, [[120,160],[60,80],[48,64],[24,32],[12,16],[6,8],[3,4],[1,1]])
         #self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
@@ -70,13 +70,13 @@ class rsn(nn.Module):
         self.deconv0 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                 padding=1, stride=1, bias=False)        
         # self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-        #                                         padding=1, stride=1, bias=False)
+        #                                          padding=1, stride=1, bias=False)
         self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
-                                                stride=2, padding=1, output_padding=1 ,bias=False)
+                                                 stride=2, padding=1, output_padding=1 ,bias=False)
         self.regress1 = conv2DRelu(in_channels=160, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
         # self.regress2 = conv2DRelu(in_channels=128, k_size=3, n_filters=64,
-        #                                          padding=1, stride=1, bias=False)
+        #                                           padding=1, stride=1, bias=False)
         self.regress3 = conv2D(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)
         self.final = conv2D(in_channels=32, k_size=3, n_filters=1,
