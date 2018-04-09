@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 15:19:26
+# @Last Modified time: 2018-04-09 16:36:18
 import sys
 import torch
 import visdom
@@ -111,7 +111,7 @@ def train(args):
 
             optimizer.zero_grad()
             outputs = model(images)
-            outputs=outputs
+            #outputs=outputs
             loss = loss_fn(input=outputs, target=labels)
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
             loss.backward()
@@ -123,7 +123,7 @@ def train(args):
                     Y=torch.Tensor([loss.data[0]]).unsqueeze(0).cpu()[0],
                     win=loss_window,
                     update='append')
-                pre = outputs[0].data.cpu().numpy().astype('float32')
+                pre = outputs.data.cpu().numpy().astype('float32')
                 pre = pre[0, :, :, :]
                 #pre = np.argmax(pre, 0)
                 pre = np.reshape(pre, [480, 640]).astype('float32')/np.max(pre)
@@ -162,7 +162,7 @@ def train(args):
             images_val = Variable(images_val.cuda(), volatile=True)
             labels_val = Variable(labels_val.cuda(), volatile=True)
 
-            outputs = model(images_val)[0]
+            outputs = model(images_val)
             pred = outputs.data.cpu().numpy()
             gt = labels_val.data.cpu().numpy()
             pred=np.reshape(pred,[4,480,640])

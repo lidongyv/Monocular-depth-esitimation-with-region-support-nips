@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 16:28:45
+# @Last Modified time: 2018-04-09 16:35:39
 
 import torch
 import numpy as np
@@ -63,7 +63,7 @@ class rsn(nn.Module):
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
         self.pyramid_pooling = pyramidPooling(256, [[120,160],[60,80],[30,40],[48,64],[24,32],[12,16],[3,4],[1,1]])
-        self.global_pooling = globalPooling(256, 1)
+        #self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
@@ -111,9 +111,8 @@ class rsn(nn.Module):
         #x=self.regress2(x)
         x2=self.regress3(x)
         x=self.final(x2)
-        y = self.global_pooling(x2)        
-        return (x+y,y)
-
+        #y = self.global_pooling(x2)        
+        return x
     def load_pretrained_model(self, model_path):
         """
         Load weights from caffemodel w/o caffe dependency
