@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 20:16:43
+# @Last Modified time: 2018-04-10 17:04:33
 
 import torch
 import numpy as np
@@ -13,7 +13,7 @@ from torch.autograd import Variable
 
 from rsden import caffe_pb2
 from rsden.models.utils import *
-from rsden.modles.resnet import *
+from rsden.models.resnet import *
 rsn_specs = {
     'scene': 
     {
