@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-11 13:19:32
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-11 16:04:48
+# @Last Modified time: 2018-04-11 20:33:51
 
 import torch
 import visdom
@@ -52,11 +52,12 @@ def train(args):
         f.write(str(name)+'\n')
         #f.write(str(param))
     f.close()
-    model_dict=res.state_dict()
-    pre=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet101-5d3b4d8f.pth')
+    model_dict=model.state_dict()
+    pre=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet50-19c8e357.pth')
     pre_dict={k: v for k, v in pre.items() if k in model_dict}
     model_dict.update(pre_dict)
-    res.load_state_dict(model_dict)
+    model.load_state_dict(model_dict)
+    #model_dict=model.state_dict()
     f=open('pre.txt','w')
     for name, param in pre_dict.items():
         f.write(str(name)+'\n')

@@ -2,12 +2,12 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-10 17:04:33
+# @Last Modified time: 2018-04-11 20:30:15
 
 import torch
 import numpy as np
 import torch.nn as nn
-
+import math
 from math import ceil
 from torch.autograd import Variable
 
@@ -23,41 +23,121 @@ rsn_specs = {
     },
 
 }
+def conv3x3(in_planes, out_planes, stride=1):
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, bias=False)
 
+
+class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(Bottleneck, self).__init__()
+        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
+                               padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(planes * 4)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
 class rsn(nn.Module):
 
 
     def __init__(self, 
                  n_classes=9, 
                  block_config=[3, 4, 23, 3], 
-                 input_size= (540, 960), 
+                 input_size= (480, 640), 
                  version='scene'):
 
         super(rsn, self).__init__()
-        
+        self.inplanes = 64
         self.block_config = rsn_specs[version]['block_config'] if version is not None else block_config
         self.n_classes = rsn_specs[version]['n_classes'] if version is not None else n_classes
         self.input_size = rsn_specs[version]['input_size'] if version is not None else input_size
-        
+        layers=[3, 4, 6, 3]
+        block=Bottleneck
         # Encoder
-        self.convbnrelu1_1 = conv2DBatchNormRelu(in_channels=3, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False)
-        self.convbnrelu1_2 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False)
-        self.convbnrelu1_3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=1,
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=1)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
         # Vanilla Residual Blocks
-        self.res_block2 = residualBlockPSP(self.block_config[0], 64, 32, 128, 1, 1)
+       
         self.full1=conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
                                                 padding=1, stride=1, bias=False)
         self.full2=conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
                                                 padding=1, stride=1, bias=False)        
-        self.res_block3 = residualBlockPSP(self.block_config[1], 128, 64, 128, 2, 1)
-        
-        # Dilated Residual Blocks
-        self.res_block4 = residualBlockPSP(self.block_config[2], 128, 64, 128, 1, 2)
-        self.res_block5 = residualBlockPSP(self.block_config[3], 128, 64, 256, 1, 4)
+
 
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
@@ -80,15 +160,37 @@ class rsn(nn.Module):
         self.regress3 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)
         self.final = conv2DRelu(in_channels=32, k_size=3, n_filters=1,
-                                                 padding=1, stride=1, bias=False)                                                                 
+                                                 padding=1, stride=1, bias=False) 
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)                                                                                                                 
     def forward(self, x):
         inp_shape = x.shape[2:]
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
 
 
-        x = self.convbnrelu1_1(x)
-        x = self.convbnrelu1_2(x)
-        x = self.convbnrelu1_3(x)
-        x = self.res_block2(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+
         x1=self.full1(x)
         x1=self.full2(x1)
         # H, W -> H/2, W/2 
@@ -113,202 +215,7 @@ class rsn(nn.Module):
         x=self.final(x)
         #y = self.global_pooling(x2)        
         return x
-    def load_pretrained_model(self, model_path):
-        """
-        Load weights from caffemodel w/o caffe dependency
-        and plug them in corresponding modules
-        """
-        # My eyes and my heart both hurt when writing this method
 
-        # Only care about layer_types that have trainable parameters
-        ltypes = ['BNData', 'ConvolutionData', 'HoleConvolutionData']
-
-        def _get_layer_params(layer, ltype):
-
-            if ltype == 'BNData': 
-                gamma = np.array(layer.blobs[0].data)
-                beta = np.array(layer.blobs[1].data)
-                mean = np.array(layer.blobs[2].data)
-                var =  np.array(layer.blobs[3].data)
-                return [mean, var, gamma, beta]
-
-            elif ltype in ['ConvolutionData', 'HoleConvolutionData']:
-                is_bias = layer.convolution_param.bias_term
-                weights = np.array(layer.blobs[0].data)
-                bias = []
-                if is_bias:
-                    bias = np.array(layer.blobs[1].data)
-                return [weights, bias]
-            
-            elif ltype == 'InnerProduct':
-                raise Exception("Fully connected layers {}, not supported".format(ltype))
-
-            else:
-                raise Exception("Unkown layer type {}".format(ltype))
-
-
-        net = caffe_pb2.NetParameter()
-        with open(model_path, 'rb') as model_file:
-            net.MergeFromString(model_file.read())
-
-        # dict formatted as ->  key:<layer_name> :: value:<layer_type>
-        layer_types = {}
-        # dict formatted as ->  key:<layer_name> :: value:[<list_of_params>]
-        layer_params = {}
-
-        for l in net.layer:
-            lname = l.name
-            ltype = l.type
-            if ltype in ltypes:
-                print("Processing layer {}".format(lname))
-                layer_types[lname] = ltype
-                layer_params[lname] = _get_layer_params(l, ltype)
-
-        # Set affine=False for all batchnorm modules
-        def _no_affine_bn(module=None):
-            if isinstance(module, nn.BatchNorm2d):
-                module.affine = False
-
-            if len([m for m in module.children()]) > 0:
-                for child in module.children():
-                    _no_affine_bn(child)
-
-        #_no_affine_bn(self)
-
-
-        def _transfer_conv(layer_name, module):
-            weights, bias = layer_params[layer_name]
-            w_shape = np.array(module.weight.size())
-            
-            print("CONV {}: Original {} and trans weights {}".format(layer_name,
-                                                                  w_shape,
-                                                                  weights.shape))
-            
-            module.weight.data.copy_(torch.from_numpy(weights).view_as(module.weight))
-
-            if len(bias) != 0:
-                b_shape = np.array(module.bias.size())
-                print("CONV {}: Original {} and trans bias {}".format(layer_name,
-                                                                      b_shape,
-                                                                      bias.shape))
-                module.bias.data.copy_(torch.from_numpy(bias))
-
-
-        def _transfer_conv_bn(conv_layer_name, mother_module):
-            conv_module = mother_module[0]
-            bn_module = mother_module[1]
-            
-            _transfer_conv(conv_layer_name, conv_module)
-            
-            mean, var, gamma, beta = layer_params[conv_layer_name+'/bn']
-            print("BN {}: Original {} and trans weights {}".format(conv_layer_name,
-                                                                   bn_module.running_mean.size(),
-                                                                   mean.shape))
-            bn_module.running_mean.copy_(torch.from_numpy(mean).view_as(bn_module.running_mean))
-            bn_module.running_var.copy_(torch.from_numpy(var).view_as(bn_module.running_var))
-            bn_module.weight.data.copy_(torch.from_numpy(gamma).view_as(bn_module.weight))
-            bn_module.bias.data.copy_(torch.from_numpy(beta).view_as(bn_module.bias))
-
-
-        def _transfer_residual(prefix, block):
-            block_module, n_layers = block[0], block[1]
-
-            bottleneck = block_module.layers[0]
-            bottleneck_conv_bn_dic = {prefix + '_1_1x1_reduce': bottleneck.cbr1.cbr_unit,
-                                      prefix + '_1_3x3': bottleneck.cbr2.cbr_unit,
-                                      prefix + '_1_1x1_proj': bottleneck.cb4.cb_unit,
-                                      prefix + '_1_1x1_increase': bottleneck.cb3.cb_unit,}
-
-            for k, v in bottleneck_conv_bn_dic.items():
-                _transfer_conv_bn(k, v)
-
-            for layer_idx in range(2, n_layers+1):
-                residual_layer = block_module.layers[layer_idx-1]
-                residual_conv_bn_dic = {'_'.join(map(str, [prefix, layer_idx, '1x1_reduce'])): residual_layer.cbr1.cbr_unit,
-                                        '_'.join(map(str, [prefix, layer_idx, '3x3'])):  residual_layer.cbr2.cbr_unit,
-                                        '_'.join(map(str, [prefix, layer_idx, '1x1_increase'])): residual_layer.cb3.cb_unit,} 
-                
-                for k, v in residual_conv_bn_dic.items():
-                    _transfer_conv_bn(k, v)
-
-
-        convbn_layer_mapping = {'conv1_1_3x3_s2': self.convbnrelu1_1.cbr_unit,
-                                'conv1_2_3x3': self.convbnrelu1_2.cbr_unit,
-                                'conv1_3_3x3': self.convbnrelu1_3.cbr_unit,
-                                'conv5_3_pool6_conv': self.pyramid_pooling.paths[0].cbr_unit, 
-                                'conv5_3_pool3_conv': self.pyramid_pooling.paths[1].cbr_unit,
-                                'conv5_3_pool2_conv': self.pyramid_pooling.paths[2].cbr_unit,
-                                'conv5_3_pool1_conv': self.pyramid_pooling.paths[3].cbr_unit,
-                                'conv5_4': self.cbr_final.cbr_unit,}
-
-        residual_layers = {'conv2': [self.res_block2, self.block_config[0]],
-                           'conv3': [self.res_block3, self.block_config[1]],
-                           'conv4': [self.res_block4, self.block_config[2]],
-                           'conv5': [self.res_block5, self.block_config[3]],}
-
-        # Transfer weights for all non-residual conv+bn layers
-        for k, v in convbn_layer_mapping.items():
-            _transfer_conv_bn(k, v)
-
-        # Transfer weights for final non-bn conv layer
-        _transfer_conv('conv6', self.classification)
-
-        # Transfer weights for all residual layers
-        for k, v in residual_layers.items():
-            _transfer_residual(k, v)
-
-
-    def tile_predict(self, img):
-        """
-        Predict by takin overlapping tiles from the image.
-
-        Strides are adaptively computed from the img shape
-        and input size
-
-        :param img: np.ndarray with shape [C, H, W] in BGR format
-        :param side: int with side length of model input
-        :param n_classes: int with number of classes in seg output.
-        """
-
-        side = self.input_size[0]
-        n_classes = self.n_classes
-        h, w = img.shape[1:]
-        n = int(max(h,w) / float(side) + 1)
-        stride_x = ( h - side ) / float(n)
-        stride_y = ( w - side ) / float(n)
-
-        x_ends = [[int(i*stride_x), int(i*stride_x) + side] for i in range(n+1)]
-        y_ends = [[int(i*stride_y), int(i*stride_y) + side] for i in range(n+1)]
-
-        pred = np.zeros([1, n_classes, h, w])
-        count = np.zeros([h, w])
-
-        slice_count = 0
-        for sx, ex in x_ends:
-            for sy, ey in y_ends:
-                slice_count += 1
-            
-                img_slice = img[:, sx:ex, sy:ey]
-                img_slice_flip = np.copy(img_slice[:,:,::-1])
-            
-                is_model_on_cuda = next(self.parameters()).is_cuda
-
-                inp = Variable(torch.unsqueeze(torch.from_numpy(img_slice).float(), 0), volatile=True)
-                flp = Variable(torch.unsqueeze(torch.from_numpy(img_slice_flip).float(), 0), volatile=True)
-                
-                if is_model_on_cuda:
-                    inp = inp.cuda()
-                    flp = flp.cuda()
-
-                psub1 = F.softmax(self.forward(inp), dim=1).data.cpu().numpy()
-                psub2 = F.softmax(self.forward(flp), dim=1).data.cpu().numpy()
-                psub = (psub1 + psub2[:, :, :, ::-1]) / 2.0
-    
-                pred[:, :, sx:ex, sy:ey] = psub
-                count[sx:ex, sy:ey] += 1.0
- 
-        score = (pred / count[None, None, ...]).astype(np.float32)[0]
-        return score / score.sum(axis=0)
 
 
 

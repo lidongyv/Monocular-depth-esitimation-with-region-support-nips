@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-10 17:05:08
+# @Last Modified time: 2018-04-11 20:43:00
 import sys
 import torch
 import visdom
@@ -66,7 +66,7 @@ def train(args):
             opts=dict(title='ground!', caption='ground.'),
         )
     # Setup Model
-    model = get_model(args.arch, n_classes)
+    model = get_model(args.arch)
     model = torch.nn.DataParallel(
         model, device_ids=range(torch.cuda.device_count()))
     #model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
@@ -96,9 +96,17 @@ def train(args):
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
+            print('load success!')
         else:
             print("No checkpoint found at '{}'".format(args.resume))
-
+            print('Initialize from resnet50!')
+            resnet50=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet50-19c8e357.pth')
+            model_dict=model.state_dict()            
+            pre_dict={k: v for k, v in resnet50.items() if k in model_dict}
+            model_dict.update(pre_dict)
+            model.load_state_dict(model_dict)
+            print('load success!')
+    #model_dict=model.state_dict()
     best_error=100
     best_rate=100
     # it should be range(checkpoint[''epoch],args.n_epoch)
@@ -200,7 +208,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default=None,
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')
