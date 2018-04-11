@@ -391,11 +391,11 @@ class pyramidPooling(nn.Module):
         self.pool_sizes = pool_sizes
 
     def forward(self, x):
-        output_slices = []
+        output_slices = [x]
         h, w = x.shape[2:]
         #print(h,w)
         for module, pool_size in zip(self.path_module_list, self.pool_sizes): 
-            out = F.adaptive_avg_pool2d(x, ((int(h/pool_size[0]), int(w/pool_size[1]))))
+            out = F.adaptive_avg_pool2d(x, ((pool_size[0], pool_size[1])))
             #print(pool_size)
             out = module(out)
             out = F.upsample(out, size=(h,w), mode='bilinear')
