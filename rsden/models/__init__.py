@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-03-18 15:24:33
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-07 15:11:34
+# @Last Modified time: 2018-04-10 21:29:38
 
 import torchvision.models as models
 
@@ -20,7 +20,7 @@ def _get_model_instance(name):
     try:
         return {
             'rsnet': rsn,
-
+            'rsnet_v2':rsn_v2,
         }[name]
     except:
         print('Model {} not available'.format(name))
