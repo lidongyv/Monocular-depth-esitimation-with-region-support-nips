@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 20:01:36
+# @Last Modified time: 2018-04-11 22:50:32
 
 import torch
 import numpy as np
@@ -31,6 +31,9 @@ def cross_entropy2d(input, target, weight=None, size_average=True):
     #    loss=loss/(950*540)
     return loss
 def l1(input, target, weight=None, size_average=True):
+    target=torch.reshape(target,(input.shape))
+    print(input.shape)
+    print(target.shape)
     loss=nn.L1Loss()
     relation=loss(input,target)
     #mean=torch.abs(torch.mean(input)-torch.mean(target))

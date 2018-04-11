@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-11 20:43:00
+# @Last Modified time: 2018-04-11 22:45:38
 import sys
 import torch
 import visdom
@@ -100,7 +100,7 @@ def train(args):
         else:
             print("No checkpoint found at '{}'".format(args.resume))
             print('Initialize from resnet50!')
-            resnet50=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet50-19c8e357.pth')
+            resnet50=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet34-333f7ec4.pth')
             model_dict=model.state_dict()            
             pre_dict={k: v for k, v in resnet50.items() if k in model_dict}
             model_dict.update(pre_dict)
@@ -116,7 +116,7 @@ def train(args):
         for i, (images, labels) in enumerate(trainloader):
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
-
+            
             optimizer.zero_grad()
             outputs = model(images)
             #outputs=outputs
