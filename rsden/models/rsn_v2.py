@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-09 20:24:19
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 20:51:38
+# @Last Modified time: 2018-04-11 14:47:57
 
 import torch
 import numpy as np
@@ -13,7 +13,7 @@ from torch.autograd import Variable
 
 from rsden import caffe_pb2
 from rsden.models.utils import *
-import rsden.modles.resnet as models
+#import rsden.models.resnet as resnet
 rsn_specs = {
     'scene': 
     {
@@ -84,7 +84,7 @@ class rsn_v2(nn.Module):
     def forward(self, x):
         inp_shape = x.shape[2:]
 
-
+        models.resnet101()
         # x = self.convbnrelu1_1(x)
         # x = self.convbnrelu1_2(x)
         # x = self.convbnrelu1_3(x)

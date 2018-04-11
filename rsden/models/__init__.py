@@ -2,17 +2,17 @@
 # @Author: yulidong
 # @Date:   2018-03-18 15:24:33
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-10 21:29:38
+# @Last Modified time: 2018-04-11 14:44:06
 
 import torchvision.models as models
 
 from rsden.models.rsn import *
+from rsden.models.rsn_v2 import *
 
-
-def get_model(name, n_classes):
+def get_model(name):
     model = _get_model_instance(name)
 
-    model = model(n_classes=n_classes)
+    model = model()
 
     return model
 
