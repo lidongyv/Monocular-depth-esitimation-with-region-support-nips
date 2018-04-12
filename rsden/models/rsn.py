@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-11 23:14:46
+# @Last Modified time: 2018-04-12 15:32:18
 
 import torch
 import numpy as np
@@ -150,19 +150,20 @@ class rsn(nn.Module):
                                                 padding=1, stride=1, bias=False)        
         # self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
         #                                          padding=1, stride=1, bias=False)
-        self.deconv2 = deconv2DBatchNormRelu(in_channels=256, n_filters=128, k_size=3, 
+        self.deconv2 = deconv2DBatchNormRelu(in_channels=256, n_filters=256, k_size=3, 
                                                  stride=2, padding=0, output_padding=1 ,bias=False)
-        self.regress1 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
+        self.regress1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                  padding=2, stride=1, bias=False)
         self.regress2 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                   padding=1, stride=1, bias=False)
-        self.regress3 = conv2D(in_channels=128, k_size=3, n_filters=64,
+        self.regress3 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
-        self.regress4 = conv2D(in_channels=64, k_size=3, n_filters=32,
+        self.regress4 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)        
-        self.final = conv2DRelu(in_channels=32, k_size=3, n_filters=1,
+        self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=16,
                                                  padding=1, stride=1, bias=False) 
-
+        self.final2 = conv2D(in_channels=16, k_size=1, n_filters=1,
+                                         padding=0, stride=1, bias=False) 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -217,6 +218,7 @@ class rsn(nn.Module):
         x=self.regress3(x)
         x=self.regress4(x)
         x=self.final(x)
+        x=self.final2(x)
         #y = self.global_pooling(x2)        
         return x
 

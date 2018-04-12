@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-12 14:48:41
+# @Last Modified time: 2018-04-12 15:42:49
 
 import os
 import torch
@@ -36,11 +36,11 @@ class NYU1(data.Dataset):
         if not self.data[0,0,0,0]:
             raise Exception("No files for ld=[%s] found in %s" % (split, self.root))
 
-        print("Found %d in %s images" % (len(self.data), split))
+        print("Found %d in %s images" % (self.data.shape[-1], split))
 
     def __len__(self):
         """__len__"""
-        return len(self.data)
+        return self.data.shape[-1],
 
     def __getitem__(self, index):
         """__getitem__
@@ -48,11 +48,11 @@ class NYU1(data.Dataset):
         :param index:
         """
 
-        img = self.data[0:3,:,:,index]
+        img = self.data[:,:,0:3,index]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        region = self.data[3,:,:,index]
+        region = self.data[:,:,3,index]
 
         if self.is_transform:
             img, region = self.transform(img, region)
@@ -65,8 +65,8 @@ class NYU1(data.Dataset):
         :param img:
         :param region:
         """
-        img = img[:, :,:]
-
+        img = img[:,:,:]
+        #print(img.shape)
         img = img.astype(np.float64)
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
