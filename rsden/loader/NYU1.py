@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-09 19:01:22
+# @Last Modified time: 2018-04-12 14:48:41
 
 import os
 import torch
@@ -48,11 +48,11 @@ class NYU1(data.Dataset):
         :param index:
         """
 
-        img = self.data[index][0:3,:,:]
+        img = self.data[0:3,:,:,index]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        region = self.data[index][3,:,:]
+        region = self.data[3,:,:,index]
 
         if self.is_transform:
             img, region = self.transform(img, region)
@@ -74,7 +74,7 @@ class NYU1(data.Dataset):
         region = torch.from_numpy(region).float()
         #img = img.astype(float) / 255.0
         # NHWC -> NCHW
-        img = img.transpose(1,2,0)
+        #img = img.transpose(1,2,0)
         totensor=transforms.ToTensor()
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-11 22:45:38
+# @Last Modified time: 2018-04-12 14:49:55
 import sys
 import torch
 import visdom
@@ -34,9 +34,9 @@ def train(args):
     data_loader = get_loader(args.dataset)
     data_path = get_data_path(args.dataset)
     t_loader = data_loader(data_path, is_transform=True,
-                           split='train', img_size=(args.img_rows, args.img_cols))
+                           split='train_split', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='test', img_size=(args.img_rows, args.img_cols))
+                           split='test_split', img_size=(args.img_rows, args.img_cols))
 
     n_classes = t_loader.n_classes
     trainloader = data.DataLoader(
@@ -116,7 +116,7 @@ def train(args):
         for i, (images, labels) in enumerate(trainloader):
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
-            
+
             optimizer.zero_grad()
             outputs = model(images)
             #outputs=outputs
@@ -160,6 +160,7 @@ def train(args):
             # 	weight=100
             # else if(loss.data[0]/weight<100)
             print("data [%d/503/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.data[0]))
+
         print('testing!')
         model.eval()
         error=[]
@@ -167,17 +168,17 @@ def train(args):
         ones=np.ones([480,640])
         zeros=np.zeros([480,640])
         for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
-            images_val = Variable(images_val.cuda(), volatile=True)
-            labels_val = Variable(labels_val.cuda(), volatile=True)
-
-            outputs = model(images_val)
-            pred = outputs.data.cpu().numpy()
-            gt = labels_val.data.cpu().numpy()
-            pred=np.reshape(pred,[4,480,640])
-            gt=np.reshape(gt,[4,480,640])
-            dis=np.abs(gt-pred)
-            error.append(np.mean(dis))
-            error_rate.append(np.mean(np.where(dis<0.05,ones,zeros)))
+            images_val = Variable(images_val.cuda(), requires_grad=False)
+            labels_val = Variable(labels_val.cuda(), requires_grad=False)
+            with torch.no_grad():
+                outputs = model(images_val)
+                pred = outputs.data.cpu().numpy()
+                gt = labels_val.data.cpu().numpy()
+                pred=np.reshape(pred,[4,480,640])
+                gt=np.reshape(gt,[4,480,640])
+                dis=np.abs(gt-pred)
+                error.append(np.mean(dis))
+                error_rate.append(np.mean(np.where(dis<0.05,ones,zeros)))
         error=np.mean(error)
         error_rate=np.mean(error_rate)
         print("error=%.4f,error < 5 cm : %.4f"%(error,error_rate))
@@ -208,7 +209,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default=None,
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl',
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')
