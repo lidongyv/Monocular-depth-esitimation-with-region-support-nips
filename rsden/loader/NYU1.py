@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-05 16:40:02
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-12 15:42:49
+# @Last Modified time: 2018-04-12 15:44:51
 
 import os
 import torch
@@ -40,7 +40,7 @@ class NYU1(data.Dataset):
 
     def __len__(self):
         """__len__"""
-        return self.data.shape[-1],
+        return self.data.shape[-1]
 
     def __getitem__(self, index):
         """__getitem__

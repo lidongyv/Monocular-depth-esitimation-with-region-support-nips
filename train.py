@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-12 15:43:29
+# @Last Modified time: 2018-04-12 15:48:12
 import sys
 import torch
 import visdom
@@ -160,7 +160,7 @@ def train(args):
             # 	weight=100
             # else if(loss.data[0]/weight<100)
             print("data [%d/291/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.data[0]))
-        if epoch%10==0:    
+        if epoch%5==0:    
             print('testing!')
             model.eval()
             error=[]
