@@ -2,7 +2,7 @@ import json
 
 from rsden.loader.SceneFlow import SceneFlow
 from rsden.loader.NYU1 import NYU1
-
+from rsden.loader.NYU2 import NYU2
 def get_loader(name):
     """get_loader
 
@@ -12,6 +12,7 @@ def get_loader(name):
     return {
         'sceneflow': SceneFlow,
         'nyu1':NYU1,
+        'nyu2':NYU2,
     }[name]
 
 

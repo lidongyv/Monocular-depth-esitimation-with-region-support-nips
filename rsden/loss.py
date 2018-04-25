@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-12 10:25:25
+# @Last Modified time: 2018-04-21 13:37:16
 
 import torch
 import numpy as np
@@ -34,8 +34,8 @@ def l1(input, target, weight=None, size_average=True):
     target=torch.reshape(target,(input.shape))
     #print(input.shape)
     #print(target.shape)
-    loss=nn.L1Loss()
-    relation=loss(input,target)
+    loss=nn.MSELoss()
+    relation=torch.sqrt(loss(input,target))
     #mean=torch.abs(torch.mean(input)-torch.mean(target))
     #print("pre_depth:%.4f,ground_depth:%.4f"%(torch.mean(input[1]).data.cpu().numpy().astype('float32'),torch.mean(target).data.cpu().numpy().astype('float32')))
     #output=relation+0.2*mean

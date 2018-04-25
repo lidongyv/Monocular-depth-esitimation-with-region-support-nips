@@ -60,3 +60,13 @@ target/
 *.pkl
 
 *.pth
+
+*.gz
+
+*.npy
+
+*.svg
+
+loss
+
+loss\.txt
