@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-25 23:20:56
+# @Last Modified time: 2018-04-25 23:33:42
 import sys
 import torch
 import visdom
@@ -88,6 +88,7 @@ def train(args):
         loss_fn = l1
     trained=0
     scale=100
+
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
@@ -100,16 +101,17 @@ def train(args):
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
             print('load success!')
-        else:
-            print("No checkpoint found at '{}'".format(args.resume))
-            print('Initialize from resnet50!')
-            resnet50=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet34-333f7ec4.pth')
-            model_dict=model.state_dict()            
-            pre_dict={k: v for k, v in resnet50.items() if k in model_dict}
-            model_dict.update(pre_dict)
-            model.load_state_dict(model_dict)
-            print('load success!')
-    #model_dict=model.state_dict()
+    else:
+
+        print("No checkpoint found at '{}'".format(args.resume))
+        print('Initialize from resnet34!')
+        resnet34=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet34-333f7ec4.pth')
+        model_dict=model.state_dict()            
+        pre_dict={k: v for k, v in resnet34.items() if k in model_dict}
+        model_dict.update(pre_dict)
+        model.load_state_dict(model_dict)
+        print('load success!')
+
     best_error=100
     best_rate=100
     # it should be range(checkpoint[''epoch],args.n_epoch)
