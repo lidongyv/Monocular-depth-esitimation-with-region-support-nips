@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-07 17:16:32
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-10 21:01:37
+# @Last Modified time: 2018-04-25 15:49:08
 4.7
 the baseline of rsden
 done:
@@ -15,3 +15,23 @@ or use the super resolution method
 4.10
 load resnet
 determine the depth space
+4.11
+depth space
+done with nyu1 train, waiting for the baseline result
+need:
+loss only on the measured area
+the nyu1 all get ground
+the introduction of nips
+the region support ground truth
+adding the region support for the baseline
+design the region support network
+combine the two network
+4.25
+stop train baseline
+reproduce data with semantic and train the baseline again
+form the final baseline and method
+without semantic 
+with semantic 
+produce region support
+with region support
+with leanring region support
