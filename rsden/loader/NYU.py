@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: yulidong
-# @Date:   2018-04-05 16:40:02
+# @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-25 20:04:18
+# @Last Modified time: 2018-04-25 23:25:52
+
 
 import os
 import torch
@@ -14,7 +15,7 @@ from python_pfm import *
 from rsden.utils import recursive_glob
 import torchvision.transforms as transforms
 
-class NYU1(data.Dataset):
+class NYU(data.Dataset):
 
 
     def __init__(self, root, split="train", is_transform=True, img_size=(480,640)):
@@ -32,38 +33,39 @@ class NYU1(data.Dataset):
         self.n_classes = 9  # 0 is reserved for "other"
         self.img_size = img_size if isinstance(img_size, tuple) else (480, 640)
         self.mean = np.array([104.00699, 116.66877, 122.67892])
-        self.data=np.load(root+split+'.npy')
-        if not self.data[0,0,0,0]:
-            raise Exception("No files for ld=[%s] found in %s" % (split, self.root))
+        self.path=os.path.join(self.root,self.split)
+        self.files=os.listdir(self.path)
+        if len(self.files)<1:
+            raise Exception("No files for %s found in %s" % (split, self.path))
 
-        print("Found %d in %s images" % (self.data.shape[-1], split))
+        print("Found %d in %s images" % (len(self.files), self.path))
 
     def __len__(self):
         """__len__"""
-        return self.data.shape[-1]
+        return len(self.files)
 
     def __getitem__(self, index):
         """__getitem__
 
         :param index:
         """
-
-        img = self.data[:,:,0:3,index]
+        data=np.load(os.path.join(self.path,self.files[index]))
+        img = data[:,:,0:3]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        region = self.data[:,:,3,index]
-
+        depth = data[:,:,3]
+        segments = data[:,:,4]
         if self.is_transform:
-            img, region = self.transform(img, region)
+            img, depth,segments = self.transform(img, depth,segments)
 
-        return img, region
+        return img, depth,segments
 
-    def transform(self, img, region):
+    def transform(self, img, depth,segments):
         """transform
 
         :param img:
-        :param region:
+        :param depth:
         """
         img = img[:,:,:]
         #print(img.shape)
@@ -71,7 +73,8 @@ class NYU1(data.Dataset):
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
         #img = torch.from_numpy(img).float()
-        region = torch.from_numpy(region).float()
+        depth = torch.from_numpy(depth).float()
+        segments=torch.from_numpy(segments).float()
         #img = img.astype(float) / 255.0
         # NHWC -> NCHW
         #img = img.transpose(1,2,0)
@@ -80,22 +83,21 @@ class NYU1(data.Dataset):
                                      std=[0.229, 0.224, 0.225])
         img=totensor(img)
         img=normalize(img)
-        
-        #region=region[0,:,:]
-        #region = region.astype(float)/32
-        #region = np.round(region)
-        #region = m.imresize(region, (self.img_size[0], self.img_size[1]), 'nearest', mode='F')
-        #region = region.astype(int)
-        #region=np.reshape(region,[1,region.shape[0],region.shape[1]])
-        #classes = np.unique(region)
+        #depth=depth[0,:,:]
+        #depth = depth.astype(float)/32
+        #depth = np.round(depth)
+        #depth = m.imresize(depth, (self.img_size[0], self.img_size[1]), 'nearest', mode='F')
+        #depth = depth.astype(int)
+        #depth=np.reshape(depth,[1,depth.shape[0],depth.shape[1]])
+        #classes = np.unique(depth)
         #print(classes)
-        #region = region.transpose(2,0,1)
-        #if not np.all(classes == np.unique(region)):
-        #    print("WARN: resizing labels yielded fewer classes")
+        #depth = depth.transpose(2,0,1)
+        #if not np.all(classes == np.unique(depth)):
+        #    print("WARN: resizing segmentss yielded fewer classes")
 
         #if not np.all(classes < self.n_classes):
         #    raise ValueError("Segmentation map contained invalid class values")
 
 
 
-        return img, region
+        return img, depth,segments

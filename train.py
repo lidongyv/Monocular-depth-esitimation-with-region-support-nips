@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-25 13:43:06
+# @Last Modified time: 2018-04-25 23:20:56
 import sys
 import torch
 import visdom
@@ -34,9 +34,9 @@ def train(args):
     data_loader = get_loader(args.dataset)
     data_path = get_data_path(args.dataset)
     t_loader = data_loader(data_path, is_transform=True,
-                           split='nyu2_train', img_size=(args.img_rows, args.img_cols))
+                           split='train', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='nyu2_test', img_size=(args.img_rows, args.img_cols))
+                           split='test', img_size=(args.img_rows, args.img_cols))
 
     n_classes = t_loader.n_classes
     trainloader = data.DataLoader(
@@ -77,10 +77,10 @@ def train(args):
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
-        # optimizer = torch.optim.Adam(
-        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.5,0.999))
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=args.l_rate,weight_decay=5e-4)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.5,0.999))
+        # optimizer = torch.optim.SGD(
+        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4)
     if hasattr(model.module, 'loss'):
         print('Using custom loss')
         loss_fn = model.module.loss
@@ -119,7 +119,7 @@ def train(args):
         #trained
         print('training!')
         model.train()
-        for i, (images, labels) in enumerate(trainloader):
+        for i, (images, labels,segments) in enumerate(trainloader):
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
 
@@ -164,7 +164,7 @@ def train(args):
             print("data [%d/817/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.item()))
         
         #epoch=3          
-        if epoch%3==0:    
+        if epoch%1==0:    
             print('testing!')
             model.train()
             error_lin=[]
@@ -246,7 +246,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='rsnet',
                         help='Architecture to use [\'region support network\']')
-    parser.add_argument('--dataset', nargs='?', type=str, default='nyu2',
+    parser.add_argument('--dataset', nargs='?', type=str, default='nyu',
                         help='Dataset to use [\'sceneflow and kitti etc\']')
     parser.add_argument('--img_rows', nargs='?', type=int, default=480,
                         help='Height of the input image')
@@ -260,7 +260,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu2_best_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default=None,
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')

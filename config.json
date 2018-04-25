@@ -11,5 +11,9 @@
   "nyu2":
   {
     "data_path": "/home/lidong/Documents/datasets/nyu/"
+  } ,
+    "nyu":
+  {
+    "data_path": "/home/lidong/Documents/datasets/nyu/"
   } 
 }
