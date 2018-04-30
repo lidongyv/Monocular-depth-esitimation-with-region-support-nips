@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-30 14:20:09
+# @Last Modified time: 2018-04-30 18:07:33
 import sys
 import torch
 import visdom
@@ -100,18 +100,19 @@ def train(args):
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
+            best_error=checkpoint['error']
             print('load success!')
             loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
             loss_rec=list(loss_rec)
             loss_rec=loss_rec[:817*trained]
 
-            for l in range(int(len(loss_rec)/817)):
-                if args.visdom:
-                    vis.line(
-                        X=torch.ones(1).cpu() * loss_rec[l][0]*817,
-                        Y=loss_rec[l][1]*torch.ones(1).cpu(),
-                        win=loss_window,
-                        update='append')
+            # for l in range(int(len(loss_rec)/817)):
+            #     if args.visdom:
+            #         vis.line(
+            #             X=torch.ones(1).cpu() * loss_rec[l][0]*817,
+            #             Y=loss_rec[l][1]*torch.ones(1).cpu(),
+            #             win=loss_window,
+            #             update='append')
             
     else:
 
@@ -124,7 +125,7 @@ def train(args):
         model.load_state_dict(model_dict)
         print('load success!')
 
-    best_error=0.7495
+    #best_error=0.7495
 
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
@@ -149,7 +150,7 @@ def train(args):
             #nyu2_train:246,nyu2_all:816
             if args.visdom:
                 vis.line(
-                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *epoch*816,
+                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*816,
                     Y=loss.item()*torch.ones(1).cpu(),
                     win=loss_window,
                     update='append')
@@ -271,7 +272,7 @@ if __name__ == '__main__':
                         help='# of the epochs')
     parser.add_argument('--batch_size', nargs='?', type=int, default=4,
                         help='Batch Size')
-    parser.add_argument('--l_rate', nargs='?', type=float, default=1e-4,
+    parser.add_argument('--l_rate', nargs='?', type=float, default=1e-3,
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
