@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-25 23:25:52
+# @Last Modified time: 2018-04-27 19:43:29
 
 
 import os
@@ -35,6 +35,7 @@ class NYU(data.Dataset):
         self.mean = np.array([104.00699, 116.66877, 122.67892])
         self.path=os.path.join(self.root,self.split)
         self.files=os.listdir(self.path)
+        self.files.sort(key=lambda x:int(x[:-4]))
         if len(self.files)<1:
             raise Exception("No files for %s found in %s" % (split, self.path))
 

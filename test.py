@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-25 11:42:05
+# @Last Modified time: 2018-04-29 14:13:29
 import sys
 import torch
 import visdom
@@ -36,13 +36,13 @@ def train(args):
     # t_loader = data_loader(data_path, is_transform=True,
     #                        split='nyu2_train', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='nyu2_test', img_size=(args.img_rows, args.img_cols))
+                           split='test', img_size=(args.img_rows, args.img_cols))
 
    # n_classes = t_loader.n_classes
     #trainloader = data.DataLoader(
     #    t_loader, batch_size=args.batch_size, num_workers=8, shuffle=True)
     valloader = data.DataLoader(
-        v_loader, batch_size=args.batch_size, num_workers=8)
+        v_loader, batch_size=args.batch_size, num_workers=4)
 
     # Setup Metrics
     #running_metrics = runningScore(n_classes)
@@ -124,7 +124,7 @@ def train(args):
     thre1=[]
     thre2=[]
     thre3=[]
-    for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
+    for i_val, (images_val, labels_val,segs) in tqdm(enumerate(valloader)):
         print(r'\n')
         images_val = Variable(images_val.cuda(), requires_grad=False)
         labels_val = Variable(labels_val.cuda(), requires_grad=False)
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='rsnet',
                         help='Architecture to use [\'region support network\']')
-    parser.add_argument('--dataset', nargs='?', type=str, default='nyu2',
+    parser.add_argument('--dataset', nargs='?', type=str, default='nyu',
                         help='Dataset to use [\'sceneflow and kitti etc\']')
     parser.add_argument('--img_rows', nargs='?', type=int, default=480,
                         help='Height of the input image')
@@ -203,7 +203,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu2_best_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl',
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=False,
                         help='Show visualization(s) on visdom | False by  default')

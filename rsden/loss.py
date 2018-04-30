@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-26 21:18:24
+# @Last Modified time: 2018-04-30 14:17:21
 
 import torch
 import numpy as np
@@ -40,6 +40,18 @@ def l1(input, target, weight=None, size_average=True):
     #print("pre_depth:%.4f,ground_depth:%.4f"%(torch.mean(input[1]).data.cpu().numpy().astype('float32'),torch.mean(target).data.cpu().numpy().astype('float32')))
     #output=relation+0.2*mean
     return relation
+def log_loss(input, target, weight=None, size_average=True):
+    target=torch.reshape(target,(input.shape))
+    loss=nn.MSELoss()
+    input=torch.log(input+1e-12)
+    target=torch.log(target+1e-12)
+    #relation=torch.sqrt(loss(input,target))
+    relation=loss(input,target)
+    d=torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)*0.5
+
+    return relation+d
+
+
 
 def region(pre,supportd,supporti):
     loss=torch.zeros(1)
@@ -49,7 +61,7 @@ def region(pre,supportd,supporti):
         num=torch.sum(torch.where(supporti==i,torch.ones_like(pre),torch.zeros_like(pre)))
         loss+=0.3*torch.abs(pre_region-ground_region)/num
         average=torch.sum(pre_region)/num
-        variance=torch.sum(torch.where(pre_region>0,torch.square(pre_region-average),0))/num
+        variance=torch.sum(torch.where(pre_region>0,torch.pow(pre_region-average,2),0))/num
         loss+=0.7*variance
 
 

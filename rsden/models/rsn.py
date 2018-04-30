@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-12 15:32:18
+# @Last Modified time: 2018-04-28 12:01:38
 
 import torch
 import numpy as np
@@ -146,11 +146,11 @@ class rsn(nn.Module):
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DBatchNormRelu(in_channels=1023, k_size=3, n_filters=256,
+        self.deconv0 = conv2DBatchNormRelu(in_channels=1023, k_size=3, n_filters=512,
                                                 padding=1, stride=1, bias=False)        
         # self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
         #                                          padding=1, stride=1, bias=False)
-        self.deconv2 = deconv2DBatchNormRelu(in_channels=256, n_filters=256, k_size=3, 
+        self.deconv2 = deconv2DBatchNormRelu(in_channels=512, n_filters=256, k_size=3, 
                                                  stride=2, padding=0, output_padding=1 ,bias=False)
         self.regress1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                  padding=2, stride=1, bias=False)
@@ -162,8 +162,8 @@ class rsn(nn.Module):
                                                  padding=1, stride=1, bias=False)        
         self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=16,
                                                  padding=1, stride=1, bias=False) 
-        self.final2 = conv2D(in_channels=16, k_size=1, n_filters=1,
-                                         padding=0, stride=1, bias=False) 
+        self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
+                                         padding=1, stride=1, bias=False) 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -223,42 +223,3 @@ class rsn(nn.Module):
         return x
 
 
-
-
-# For Testing Purposes only
-if __name__ == '__main__':
-    cd = 0
-    from torch.autograd import Variable
-    import matplotlib.pyplot as plt
-    import scipy.misc as m
-    from rsnet.loader.cityscapes_loader import cityscapesLoader as cl
-    psp = rsn(version='ade20k')
-    
-    # Just need to do this one time
-    #psp.load_pretrained_model(model_path='/home/meet/models/rsn101_cityscapes.caffemodel')
-    psp.load_pretrained_model(model_path='/home/meet/models/rsn50_ADE20K.caffemodel')
-    
-    # psp.load_state_dict(torch.load('psp.pth'))
-
-    psp.float()
-    psp.cuda(cd)
-    psp.eval()
-
-    dst = cl(root='/home/meet/datasets/cityscapes/')
-    img = m.imread('/home/meet/seg/leftImg8bit/demoVideo/stuttgart_00/stuttgart_00_000000_000010_leftImg8bit.png')
-    m.imsave('cropped.png', img)
-    orig_size = img.shape[:-1]
-    img = img.transpose(2, 0, 1)
-    img = img.astype(np.float64)
-    img -= np.array([123.68, 116.779, 103.939])[:, None, None]
-    img = np.copy(img[::-1, :, :])
-    flp = np.copy(img[:, :, ::-1])
-
-    out = psp.tile_predict(img)
-    pred = np.argmax(out, axis=0)
-    #decoded = dst.decode_segmap(pred)
-    # m.imsave('ade20k_sttutgart_tiled.png', decoded)
-    m.imsave('ade20k_sttutgart_tiled.png', pred) 
-
-    torch.save(psp.state_dict(), "psp_ade20k.pth")
-    print("Output Shape {} \t Input Shape {}".format(out.shape, img.shape))
