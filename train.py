@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-30 18:07:33
+# @Last Modified time: 2018-05-01 18:12:59
 import sys
 import torch
 import visdom
@@ -77,10 +77,10 @@ def train(args):
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
-        # optimizer = torch.optim.Adam(
-        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.5,0.999))
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
+        # optimizer = torch.optim.SGD(
+        #     model.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
     if hasattr(model.module, 'loss'):
         print('Using custom loss')
         loss_fn = model.module.loss
@@ -100,7 +100,7 @@ def train(args):
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
-            best_error=checkpoint['error']
+            #best_error=checkpoint['error']
             print('load success!')
             loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
             loss_rec=list(loss_rec)
@@ -125,7 +125,7 @@ def train(args):
         model.load_state_dict(model_dict)
         print('load success!')
 
-    #best_error=0.7495
+    best_error=0.7167
 
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
@@ -179,7 +179,7 @@ def train(args):
             print("data [%d/816/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.item()))
         
         #epoch=3          
-        if epoch%1==0:    
+        if epoch%4==0:    
             print('testing!')
             model.train()
             error_lin=[]
@@ -246,7 +246,7 @@ def train(args):
                     args.arch, args.dataset))
                 print('save success')
             np.save('/home/lidong/Documents/RSDEN/RSDEN//loss.npy',loss_rec)
-        if epoch%10==0:
+        if epoch%15==0:
             #best_error = error
             state = {'epoch': epoch+1,
                      'model_state': model.state_dict(),
@@ -254,6 +254,7 @@ def train(args):
             torch.save(state, "{}_{}_{}_model.pkl".format(
                 args.arch, args.dataset,str(epoch)))
             print('save success')
+
 
 
 
@@ -276,7 +277,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default=None,
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-30 14:17:21
+# @Last Modified time: 2018-05-01 18:14:33
 
 import torch
 import numpy as np
@@ -34,6 +34,9 @@ def l1(input, target, weight=None, size_average=True):
     target=torch.reshape(target,(input.shape))
     #print(input.shape)
     #print(target.shape)
+    # num=torch.sum(torch.where(input==0,torch.ones_like(input),torch.zeros_like(input)))
+    # positive=num/torch.sum(torch.ones_like(input))
+    #print(positive.item())
     loss=nn.MSELoss()
     relation=torch.sqrt(loss(input,target))
     #mean=torch.abs(torch.mean(input)-torch.mean(target))
@@ -41,16 +44,41 @@ def l1(input, target, weight=None, size_average=True):
     #output=relation+0.2*mean
     return relation
 def log_loss(input, target, weight=None, size_average=True):
+    # num=torch.sum(torch.where(input==0,torch.ones_like(input),torch.zeros_like(input)))
+    # positive=num/torch.sum(torch.ones_like(input))
+    # print(positive.item())
     target=torch.reshape(target,(input.shape))
-    loss=nn.MSELoss()
-    input=torch.log(input+1e-12)
-    target=torch.log(target+1e-12)
-    #relation=torch.sqrt(loss(input,target))
-    relation=loss(input,target)
-    d=torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)*0.5
+    loss=nn.MSELoss() 
+    input=torch.log(input+1e-12) 
+    target=torch.log(target+1e-12) 
+    #relation=torch.sqrt(loss(input,target)) 
+    relation=loss(input,target) 
+    d=torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)*0.5 
+ 
+    return relation+d 
 
-    return relation+d
+    # target=torch.reshape(target,(input.shape))
+    # #loss=nn.MSELoss()
+    # num=torch.sum(torch.where(input>0,torch.ones_like(input),torch.zeros_like(input)))
+    # input=torch.log(torch.where(input>0,input,torch.ones_like(input)))
+    # target=torch.log(torch.where(target>0,target,torch.ones_like(target)))
+    # # #relation=torch.sqrt(loss(input,target))
+    # relation=torch.sum(torch.pow(torch.where(input==0,input,input-target),2))/num
+    # d=torch.pow(torch.sum(torch.where(input==0,input,input-target)),2)/torch.pow(num,2)*0.5
+    # #positive=num/torch.sum(torch.ones_like(input))
+    # #print(positive.item())
+    # #-torch.sum(torch.where(input<0,input,torch.zeros_like(input)))/num
+    # losses=relation+d
+    # return losses
 
+def log_l1(input, target, weight=None, size_average=True):
+    l1loss=l1(input,target)
+    logloss=log_loss(input,target)
+    num=torch.sum(torch.where(input==0,torch.ones_like(input),torch.zeros_like(input)))
+    positive=num/torch.sum(torch.ones_like(input))
+    print(positive.item())
+    loss=(1-positive)*logloss+positive*l1loss
+    return loss
 
 
 def region(pre,supportd,supporti):
