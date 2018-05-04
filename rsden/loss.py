@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-01 18:24:55
+# @Last Modified time: 2018-05-04 10:23:15
 
 import torch
 import numpy as np
@@ -53,9 +53,9 @@ def log_loss(input, target, weight=None, size_average=True):
     target=torch.log(target+1e-12) 
     #relation=torch.sqrt(loss(input,target)) 
     relation=loss(input,target) 
-    d=torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)*0.5 
+    d=0.5*torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)
  
-    return relation+d 
+    return relation-d 
 
     # target=torch.reshape(target,(input.shape))
     # #loss=nn.MSELoss()

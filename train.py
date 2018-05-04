@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-01 18:29:11
+# @Last Modified time: 2018-05-04 10:29:16
 import sys
 import torch
 import visdom
@@ -30,6 +30,7 @@ def train(args):
     data_aug = Compose([RandomRotate(10),
                         RandomHorizontallyFlip()])
     loss_rec=[]
+    best_error=2
     # Setup Dataloader
     data_loader = get_loader(args.dataset)
     data_path = get_data_path(args.dataset)
@@ -50,7 +51,12 @@ def train(args):
     # Setup visdom for visualization
     if args.visdom:
         vis = visdom.Visdom()
-
+        old_window = vis.line(X=torch.zeros((1,)).cpu(),
+                               Y=torch.zeros((1)).cpu(),
+                               opts=dict(xlabel='minibatches',
+                                         ylabel='Loss',
+                                         title='Trained Loss',
+                                         legend=['Loss']))
         loss_window = vis.line(X=torch.zeros((1,)).cpu(),
                                Y=torch.zeros((1)).cpu(),
                                opts=dict(xlabel='minibatches',
@@ -77,10 +83,10 @@ def train(args):
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
-        # optimizer = torch.optim.SGD(
-        #     model.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
+        # optimizer = torch.optim.Adam(
+        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
     if hasattr(model.module, 'loss'):
         print('Using custom loss')
         loss_fn = model.module.loss
@@ -94,25 +100,29 @@ def train(args):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             #model_dict=model.state_dict()  
-
+            #opt=torch.load('/home/lidong/Documents/RSDEN/RSDEN/exp1/l2/sgd/log/83/rsnet_nyu_best_model.pkl')
             model.load_state_dict(checkpoint['model_state'])
             optimizer.load_state_dict(checkpoint['optimizer_state'])
+            #opt=None
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
-            #best_error=checkpoint['error']
-            print('load success!')
+            best_error=checkpoint['error']
+            
+            #print('load success!')
             loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
             loss_rec=list(loss_rec)
-            loss_rec=loss_rec[:817*trained]
-
-            # for l in range(int(len(loss_rec)/817)):
-            #     if args.visdom:
-            #         vis.line(
-            #             X=torch.ones(1).cpu() * loss_rec[l][0]*817,
-            #             Y=loss_rec[l][1]*torch.ones(1).cpu(),
-            #             win=loss_window,
-            #             update='append')
+            loss_rec=loss_rec[:816*trained]
+            # for i in range(300):
+            #     loss_rec[i][1]=loss_rec[i+300][1]
+            for l in range(int(len(loss_rec)/816)):
+                if args.visdom:
+                    
+                    vis.line(
+                        X=torch.ones(1).cpu() * loss_rec[l*816][0],
+                        Y=np.mean(np.array(loss_rec[l*816:(l+1)*816])[:,1])*torch.ones(1).cpu(),
+                        win=old_window,
+                        update='append')
             
     else:
 
@@ -124,8 +134,10 @@ def train(args):
         model_dict.update(pre_dict)
         model.load_state_dict(model_dict)
         print('load success!')
+        best_error=1
+        trained=0
 
-    best_error=0.7167
+
 
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
@@ -179,7 +191,7 @@ def train(args):
             print("data [%d/816/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.item()))
         
         #epoch=3          
-        if epoch%4==0:    
+        if epoch%1==0:    
             print('testing!')
             model.train()
             error_lin=[]
@@ -250,7 +262,8 @@ def train(args):
             #best_error = error
             state = {'epoch': epoch+1,
                      'model_state': model.state_dict(),
-                     'optimizer_state': optimizer.state_dict(), }
+                     'optimizer_state': optimizer.state_dict(), 
+                     'error': error,}
             torch.save(state, "{}_{}_{}_model.pkl".format(
                 args.arch, args.dataset,str(epoch)))
             print('save success')
@@ -277,8 +290,8 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default=None,
-                        help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_120_model.pkl',
+                        help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_30_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')
     args = parser.parse_args()
