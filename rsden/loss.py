@@ -2,14 +2,55 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-04 10:23:15
+# @Last Modified time: 2018-05-08 23:05:51
 
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
+def l1_r(input, target, weight=None, size_average=True):
+    relation=[]
+    loss=nn.MSELoss()
 
+    for i in range(3):
+        target=torch.reshape(target,(input[i].shape))
+        #print(target.shape)
+        t=torch.sqrt(loss(input[i],target))
+        #print(t.item())
+        relation.append(t)
+
+    return relation
+def l1_a(input, target, weight=None, size_average=True):
+    relation=[]
+    loss=nn.MSELoss()
+
+    for i in range(4):
+        target=torch.reshape(target,(input[i].shape))
+        #print(target.shape)
+        t=torch.sqrt(loss(input[i],target))
+        #print(t.item())
+        relation.append(t)
+
+    return relation
+def log_r(input, target, weight=None, size_average=True):
+    relation=[]
+    d=[]
+    out=[]
+    target=torch.reshape(target,(input[0].shape))
+
+
+    target=torch.log(target+1e-6)
+    loss=nn.MSELoss()
+    for i in range(3):
+        # pre=input[i]
+        # num=torch.sum(torch.where(pre>0,torch.ones_like(pre),torch.zeros_like(pre)))/torch.sum(torch.ones_like(pre))
+        # print(num)
+        input[i]=torch.log(input[i]+1e-6)  
+        relation.append(loss(input[i],target))
+        d.append(0.5*torch.pow(torch.sum(input[i]-target),2)/torch.pow(torch.sum(torch.ones_like(input[i])),2))
+        out.append(relation[i]-d[i])
+    return relation     
 def cross_entropy2d(input, target, weight=None, size_average=True):
     n, c, h, w = input.size()
     #print(c,target.max().data.cpu().numpy())
@@ -79,18 +120,51 @@ def log_l1(input, target, weight=None, size_average=True):
     print(positive.item())
     loss=(1-positive)*logloss+positive*l1loss
     return loss
+# def region(input,target,instance):
+#     loss=0
+#     lf=nn.MSELoss(size_average=False,reduce=False)
+#     target=torch.reshape(target,(input.shape))
+#     instance=torch.reshape(instance,(input.shape))
+#     zero=torch.zeros_like(input)
+#     one=torch.ones_like(input)
+#     dis=lf(input,target)
+#     for i in range(0,int(torch.max(instance).item()+1)):
+#         input_region=torch.where(instance==i,input,zero)
+#         ground_region=torch.where(instance==i,target,zero)
+#         m=torch.max(ground_region)
+#         if m==0:
+#             continue
+#         num=torch.sum(torch.where(instance==i,one,zero))
+#         loss+=lf(input_region,ground_region)/num
+#         # average=torch.sum(input_region)/num
+#         # input_region=input_region-average
+#         # input_region=torch.pow(input_region,2)
+#         # var=torch.sum(input_region)/num
+#         # loss+=0.5*var
+#     loss=loss/torch.max(instance)
+#     return loss
 
 
-def region(pre,supportd,supporti):
-    loss=torch.zeros(1)
-    for i in range(1,torch.max(supporti)):
-        pre_region=torch.where(supporti==i,pre,torch.zeros_like(pre))
-        ground_region=torch.where(supporti==i,supportd,torch.zeros_like(pre))
-        num=torch.sum(torch.where(supporti==i,torch.ones_like(pre),torch.zeros_like(pre)))
-        loss+=0.3*torch.abs(pre_region-ground_region)/num
-        average=torch.sum(pre_region)/num
-        variance=torch.sum(torch.where(pre_region>0,torch.pow(pre_region-average,2),0))/num
-        loss+=0.7*variance
+def region(input,target,instance):
+    loss=0
+    lf=nn.MSELoss(size_average=False,reduce=False)
+    target=torch.reshape(target,(input.shape))
+    # input=torch.log(input+1e-12) 
+    # target=torch.log(target+1e-12) 
+    instance=torch.reshape(instance,(input.shape))
+    zero=torch.zeros_like(input)
+    one=torch.ones_like(input)
+    dis=lf(input,target)
+    for i in range(0,int(torch.max(instance).item()+1)):
+        dis_region=torch.where(instance==i,dis,zero)
+        num=torch.sum(torch.where(instance==i,one,zero))
+        average=torch.sum(dis_region)/num
+        loss=loss+average
+        # dis_region=torch.where(instance==i,dis_region-average,zero)
+        # var=(torch.sum(torch.pow(dis_region,2))/num)/average
+        # loss=loss+var
+    loss=loss/(torch.max(instance)+1)
+    return loss
 
 
 

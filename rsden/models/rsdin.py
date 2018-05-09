@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-08 12:09:39
+# @Last Modified time: 2018-05-05 22:16:04
 
 import torch
 import numpy as np
@@ -97,7 +97,7 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         return out
-class rsn(nn.Module):
+class rsdin(nn.Module):
 
 
     def __init__(self, 
@@ -114,7 +114,7 @@ class rsn(nn.Module):
         layers=[3, 4, 6, 3]
         block=BasicBlock
         # Encoder
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=1,
+        self.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)

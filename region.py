@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-26 10:28:48
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-26 20:51:26
+# @Last Modified time: 2018-05-06 14:54:30
 import os
 import numpy as np
 import cv2
@@ -62,8 +62,8 @@ def reg2supportd(reg,dep,variance):
                         supportd[region1]=np.mean(dep[region1])
                         break;                    
     return supportd                    
-load_path='/home/lidong/Documents/datasets/nyu/train'
-save_path='/home/lidong/Documents/datasets/nyu/train_region'
+load_path='/home/lidong/Documents/datasets/nyu/test'
+save_path='/home/lidong/Documents/datasets/nyu/test_region'
 filenames=os.listdir(load_path)
 for i in range(len(filenames)):
     data=np.load(os.path.join(load_path,filenames[i]))

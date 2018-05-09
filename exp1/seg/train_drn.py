@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-08 19:56:42
+# @Last Modified time: 2018-05-05 17:01:08
 import sys
 import torch
 import visdom
@@ -35,9 +35,9 @@ def train(args):
     data_loader = get_loader(args.dataset)
     data_path = get_data_path(args.dataset)
     t_loader = data_loader(data_path, is_transform=True,
-                           split='train_region', img_size=(args.img_rows, args.img_cols),task='region')
+                           split='train', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='test_region', img_size=(args.img_rows, args.img_cols),task='region')
+                           split='test', img_size=(args.img_rows, args.img_cols))
 
     n_classes = t_loader.n_classes
     trainloader = data.DataLoader(
@@ -51,22 +51,43 @@ def train(args):
     # Setup visdom for visualization
     if args.visdom:
         vis = visdom.Visdom()
-        old_window = vis.line(X=torch.zeros((1,)).cpu(),
+        # old_window = vis.line(X=torch.zeros((1,)).cpu(),
+        #                        Y=torch.zeros((1)).cpu(),
+        #                        opts=dict(xlabel='minibatches',
+        #                                  ylabel='Loss',
+        #                                  title='Trained Loss',
+        #                                  legend=['Loss']))
+        loss_window1 = vis.line(X=torch.zeros((1,)).cpu(),
                                Y=torch.zeros((1)).cpu(),
                                opts=dict(xlabel='minibatches',
                                          ylabel='Loss',
-                                         title='Trained Loss',
-                                         legend=['Loss']))
-        loss_window = vis.line(X=torch.zeros((1,)).cpu(),
+                                         title='Training Loss1',
+                                         legend=['Loss1']))
+        loss_window2 = vis.line(X=torch.zeros((1,)).cpu(),
                                Y=torch.zeros((1)).cpu(),
                                opts=dict(xlabel='minibatches',
                                          ylabel='Loss',
-                                         title='Training Loss',
+                                         title='Training Loss2',
                                          legend=['Loss']))
-        pre_window = vis.image(
+        loss_window3 = vis.line(X=torch.zeros((1,)).cpu(),
+                               Y=torch.zeros((1)).cpu(),
+                               opts=dict(xlabel='minibatches',
+                                         ylabel='Loss',
+                                         title='Training Loss3',
+                                         legend=['Loss3']))                                                 
+        pre_window1 = vis.image(
             np.random.rand(480, 640),
-            opts=dict(title='predict!', caption='predict.'),
+            opts=dict(title='predict1!', caption='predict1.'),
         )
+        pre_window2 = vis.image(
+            np.random.rand(480, 640),
+            opts=dict(title='predict2!', caption='predict2.'),
+        )
+        pre_window3 = vis.image(
+            np.random.rand(480, 640),
+            opts=dict(title='predict3!', caption='predict3.'),
+        )
+
         ground_window = vis.image(
             np.random.rand(480, 640),
             opts=dict(title='ground!', caption='ground.'),
@@ -91,7 +112,7 @@ def train(args):
         print('Using custom loss')
         loss_fn = model.module.loss
     else:
-        loss_fn = region
+        loss_fn = l1_r
     trained=0
     scale=100
 
@@ -128,17 +149,26 @@ def train(args):
 
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize from resnet34!')
-        resnet34=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet34-333f7ec4.pth')
+        #resnet34=torch.load('/home/lidong/Documents/RSDEN/RSDEN/resnet34-333f7ec4.pth')
+        resnet34=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl')
         model_dict=model.state_dict()            
-        pre_dict={k: v for k, v in resnet34.items() if k in model_dict}
+        # for k,v in resnet34['model_state'].items():
+        #     print(k)
+        pre_dict={k: v for k, v in resnet34['model_state'].items() if k in model_dict}
+        # for k,v in pre_dict.items():
+        #     print(k)
+
         model_dict.update(pre_dict)
+        model_dict['module.conv1.weight']=torch.cat([model_dict['module.conv1.weight'],torch.mean(model_dict['module.conv1.weight'],1,keepdim=True)],1)
+        # model_dict['module.conv1.weight']=torch.transpose(model_dict['module.conv1.weight'],1,2)
+        # model_dict['module.conv1.weight']=torch.transpose(model_dict['module.conv1.weight'],2,4)
         model.load_state_dict(model_dict)
         print('load success!')
         best_error=1
         trained=0
 
 
-    best_error=5
+
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
     #for epoch in range(0, args.n_epoch):
@@ -146,16 +176,22 @@ def train(args):
         #trained
         print('training!')
         model.train()
+
         for i, (images, labels,segments) in enumerate(trainloader):
             images = Variable(images.cuda())
             labels = Variable(labels.cuda())
             segments = Variable(segments.cuda())
+            # print(segments.shape)
+            # print(images.shape)
+            images=torch.cat([images,segments],1)
             optimizer.zero_grad()
             outputs = model(images)
+            #outputs=torch.reshape(outputs,[outputs.shape[0],1,outputs.shape[1],outputs.shape[2]])
             #outputs=outputs
-            loss = loss_fn(input=outputs, target=labels,instance=segments)
+            loss = loss_fn(input=outputs, target=labels)
+            out=loss[0]+loss[1]+loss[2]
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
-            loss.backward()
+            out.backward()
             optimizer.step()
             # print(torch.Tensor([loss.data[0]]).unsqueeze(0).cpu())
             #print(loss.item()*torch.ones(1).cpu())
@@ -163,19 +199,51 @@ def train(args):
             if args.visdom:
                 vis.line(
                     X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*816,
-                    Y=loss.item()*torch.ones(1).cpu(),
-                    win=loss_window,
+                    Y=loss[0].item()*torch.ones(1).cpu(),
+                    win=loss_window1,
                     update='append')
-                pre = outputs.data.cpu().numpy().astype('float32')
-                pre = pre[0, :, :, :]
+                vis.line(
+                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*816,
+                    Y=loss[1].item()*torch.ones(1).cpu(),
+                    win=loss_window2,
+                    update='append')
+                vis.line(
+                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*816,
+                    Y=loss[2].item()*torch.ones(1).cpu(),
+                    win=loss_window3,
+                    update='append')
+                pre = outputs[0].data.cpu().numpy().astype('float32')
+                pre = pre[0,:, :]
                 #pre = np.argmax(pre, 0)
                 pre = (np.reshape(pre, [480, 640]).astype('float32')-np.min(pre))/(np.max(pre)-np.min(pre))
                 #pre = pre/np.max(pre)
                 # print(type(pre[0,0]))
                 vis.image(
                     pre,
-                    opts=dict(title='predict!', caption='predict.'),
-                    win=pre_window,
+                    opts=dict(title='predict1!', caption='predict1.'),
+                    win=pre_window1,
+                )
+                pre = outputs[1].data.cpu().numpy().astype('float32')
+                pre = pre[0,:, :]
+                #pre = np.argmax(pre, 0)
+                pre = (np.reshape(pre, [480, 640]).astype('float32')-np.min(pre))/(np.max(pre)-np.min(pre))
+                #pre = pre/np.max(pre)
+                # print(type(pre[0,0]))
+                vis.image(
+                    pre,
+                    opts=dict(title='predict2!', caption='predict2.'),
+                    win=pre_window2,
+                )
+                pre = outputs[2].data.cpu().numpy().astype('float32')
+                pre = pre[0,:, :]
+                #pre = np.argmax(pre, 0)
+                pre = (np.reshape(pre, [480, 640]).astype('float32')-np.min(pre))/(np.max(pre)-np.min(pre))
+                #pre = pre/np.max(pre)
+                # print(type(pre[0,0]))
+                vis.image(
+                    pre,
+                    opts=dict(title='predict3!', caption='predict3.'),
+                    win=pre_window3,
                 )
                 ground=labels.data.cpu().numpy().astype('float32')
                 #print(ground.shape)
@@ -187,9 +255,9 @@ def train(args):
                     win=ground_window,
                 )
             
-            loss_rec.append([i+epoch*816,torch.Tensor([loss.item()]).unsqueeze(0).cpu()])
-            print("data [%d/816/%d/%d] Loss: %.4f" % (i, epoch, args.n_epoch,loss.item()))
-        
+            loss_rec.append([i+epoch*816,torch.Tensor([loss[0].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[1].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[2].item()]).unsqueeze(0).cpu()])
+            print("data [%d/816/%d/%d] Loss1: %.4f Loss2: %.4f Loss3: %.4f" % (i, epoch, args.n_epoch,loss[0].item(),loss[1].item(),loss[2].item()))
+
         #epoch=3          
         if epoch%3==0:    
             print('testing!')
@@ -203,65 +271,52 @@ def train(args):
             thre1=[]
             thre2=[]
             thre3=[]
-            variance=[]
+
             for i_val, (images_val, labels_val,segments) in tqdm(enumerate(valloader)):
                 print(r'\n')
                 images_val = Variable(images_val.cuda(), requires_grad=False)
                 labels_val = Variable(labels_val.cuda(), requires_grad=False)
-                segments = Variable(segments.cuda(), requires_grad=False)
+                segments = Variable(segments.cuda())
+                images_val=torch.cat([images_val,segments],1)
                 with torch.no_grad():
                     outputs = model(images_val)
-                    pred = outputs.data.cpu().numpy()
+                    pred = outputs[2].data.cpu().numpy()
                     gt = labels_val.data.cpu().numpy()
-                    instance = segments.data.cpu().numpy()
                     ones=np.ones((gt.shape))
                     zeros=np.zeros((gt.shape))
                     pred=np.reshape(pred,(gt.shape))
-                    instance=np.reshape(instance,(gt.shape))
                     #gt=np.reshape(gt,[4,480,640])
                     dis=np.square(gt-pred)
                     error_lin.append(np.sqrt(np.mean(dis)))
                     dis=np.square(np.log(gt)-np.log(pred))
                     error_log.append(np.sqrt(np.mean(dis)))
-                    for i in range(int(np.max(instance)+1)):
-                        pre_region=np.where(instance==i,pred,0)
-                        num=np.sum(np.where(instance==i,1,0))
-                        m=np.mean(pre_region)
-                        pre_region-=m
-                        pre_region=np.sum(np.square(pre_region))/num
-                        variance.append(pre_region)
-                    print("error_lin=%.4f,error_log=%.4f,variance=%.4f"%(
+                    alpha=np.mean(np.log(gt)-np.log(pred))
+                    dis=np.square(np.log(pred)-np.log(gt)+alpha)
+                    error_va.append(np.mean(dis)/2)
+                    dis=np.mean(np.abs(gt-pred))/gt
+                    error_absrd.append(np.mean(dis))
+                    dis=np.square(gt-pred)/gt
+                    error_squrd.append(np.mean(dis))
+                    thelt=np.where(pred/gt>gt/pred,pred/gt,gt/pred)
+                    thres1=1.25
+                    
+                    thre1.append(np.mean(np.where(thelt<thres1,ones,zeros)))
+                    thre2.append(np.mean(np.where(thelt<thres1*thres1,ones,zeros)))
+                    thre3.append(np.mean(np.where(thelt<thres1*thres1*thres1,ones,zeros)))
+                    #a=thre1[i_val]
+                    #error_rate.append(np.mean(np.where(dis<0.6,ones,zeros)))
+                    print("error_lin=%.4f,error_log=%.4f,error_va=%.4f,error_absrd=%.4f,error_squrd=%.4f,thre1=%.4f,thre2=%.4f,thre3=%.4f"%(
                         error_lin[i_val],
                         error_log[i_val],
-                        variance[i_val]))                   
-                    # alpha=np.mean(np.log(gt)-np.log(pred))
-                    # dis=np.square(np.log(pred)-np.log(gt)+alpha)
-                    # error_va.append(np.mean(dis)/2)
-                    # dis=np.mean(np.abs(gt-pred))/gt
-                    # error_absrd.append(np.mean(dis))
-                    # dis=np.square(gt-pred)/gt
-                    # error_squrd.append(np.mean(dis))
-                    # thelt=np.where(pred/gt>gt/pred,pred/gt,gt/pred)
-                    # thres1=1.25
-
-                    # thre1.append(np.mean(np.where(thelt<thres1,ones,zeros)))
-                    # thre2.append(np.mean(np.where(thelt<thres1*thres1,ones,zeros)))
-                    # thre3.append(np.mean(np.where(thelt<thres1*thres1*thres1,ones,zeros)))
-                    # #a=thre1[i_val]
-                    # #error_rate.append(np.mean(np.where(dis<0.6,ones,zeros)))
-                    # print("error_lin=%.4f,error_log=%.4f,error_va=%.4f,error_absrd=%.4f,error_squrd=%.4f,thre1=%.4f,thre2=%.4f,thre3=%.4f"%(
-                    #     error_lin[i_val],
-                    #     error_log[i_val],
-                    #     error_va[i_val],
-                    #     error_absrd[i_val],
-                    #     error_squrd[i_val],
-                    #     thre1[i_val],
-                    #     thre2[i_val],
-                    #     thre3[i_val]))
+                        error_va[i_val],
+                        error_absrd[i_val],
+                        error_squrd[i_val],
+                        thre1[i_val],
+                        thre2[i_val],
+                        thre3[i_val]))
             error=np.mean(error_lin)
-            variance=np.mean(variance)
             #error_rate=np.mean(error_rate)
-            print("error=%.4f,variance=%.4f"%(error,variance))
+            print("error=%.4f"%(error))
 
             if error<= best_error:
                 best_error = error
@@ -273,7 +328,7 @@ def train(args):
                     args.arch, args.dataset))
                 print('save success')
             np.save('/home/lidong/Documents/RSDEN/RSDEN//loss.npy',loss_rec)
-        if epoch%10==0:
+        if epoch%15==0:
             #best_error = error
             state = {'epoch': epoch+1,
                      'model_state': model.state_dict(),
@@ -289,7 +344,7 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
-    parser.add_argument('--arch', nargs='?', type=str, default='rsnet',
+    parser.add_argument('--arch', nargs='?', type=str, default='drnet',
                         help='Architecture to use [\'region support network\']')
     parser.add_argument('--dataset', nargs='?', type=str, default='nyu',
                         help='Dataset to use [\'sceneflow and kitti etc\']')
@@ -305,7 +360,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default=None,
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_30_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')

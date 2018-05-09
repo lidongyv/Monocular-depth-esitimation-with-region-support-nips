@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-27 19:43:29
+# @Last Modified time: 2018-05-08 11:06:04
 
 
 import os
@@ -18,7 +18,7 @@ import torchvision.transforms as transforms
 class NYU(data.Dataset):
 
 
-    def __init__(self, root, split="train", is_transform=True, img_size=(480,640)):
+    def __init__(self, root, split="train", is_transform=True, img_size=(480,640),task='depth'):
         """__init__
 
         :param root:
@@ -40,7 +40,12 @@ class NYU(data.Dataset):
             raise Exception("No files for %s found in %s" % (split, self.path))
 
         print("Found %d in %s images" % (len(self.files), self.path))
-
+        if task=='depth':
+            self.d=3
+            self.r=5
+        else:
+            self.d=5
+            self.r=7
     def __len__(self):
         """__len__"""
         return len(self.files)
@@ -55,8 +60,9 @@ class NYU(data.Dataset):
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        depth = data[:,:,3]
-        segments = data[:,:,4]
+        depth = data[:,:,self.d]
+        segments = data[:,:,self.r]
+        segments=np.reshape(segments,[1,segments.shape[0],segments.shape[1]])
         if self.is_transform:
             img, depth,segments = self.transform(img, depth,segments)
 

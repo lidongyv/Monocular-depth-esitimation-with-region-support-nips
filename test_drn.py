@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-05 08:59:42
+# @Last Modified time: 2018-05-07 20:54:32
 import sys
 import torch
 import visdom
@@ -36,7 +36,7 @@ def train(args):
     # t_loader = data_loader(data_path, is_transform=True,
     #                        split='nyu2_train', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='test', img_size=(args.img_rows, args.img_cols))
+                           split='test_region', img_size=(args.img_rows, args.img_cols))
 
    # n_classes = t_loader.n_classes
     #trainloader = data.DataLoader(
@@ -125,13 +125,20 @@ def train(args):
     thre2=[]
     thre3=[]
     for i_val, (images_val, labels_val,segs) in tqdm(enumerate(valloader)):
-        print(r'\n')
+
         images_val = Variable(images_val.cuda(), requires_grad=False)
         labels_val = Variable(labels_val.cuda(), requires_grad=False)
+        segs = Variable(segs.cuda(), requires_grad=False)
+        # print(segments.shape)
+        # print(images.shape)
+        images_val=torch.cat([images_val,segs],1)
         with torch.no_grad():
             outputs = model(images_val)
-            pred = outputs.data.cpu().numpy()
-            gt = labels_val.data.cpu().numpy()
+            pre=outputs[2]
+            pred = outputs[0].data.cpu().numpy()+1e-12
+            num=torch.sum(torch.where(pre>0,torch.ones_like(pre),torch.zeros_like(pre)))/torch.sum(torch.ones_like(pre))
+            #print(num)
+            gt = labels_val.data.cpu().numpy()+1e-12
             ones=np.ones((gt.shape))
             zeros=np.zeros((gt.shape))
             pred=np.reshape(pred,(gt.shape))
@@ -143,6 +150,7 @@ def train(args):
             alpha=np.mean(np.log(gt)-np.log(pred))
             dis=np.square(np.log(pred)-np.log(gt)+alpha)
             error_va.append(np.mean(dis)/2)
+            #error_va.append(np.mean(dis)/2)
             dis=np.mean(np.abs(gt-pred))/gt
             error_absrd.append(np.mean(dis))
             dis=np.square(gt-pred)/gt
@@ -187,7 +195,7 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
-    parser.add_argument('--arch', nargs='?', type=str, default='rsnet',
+    parser.add_argument('--arch', nargs='?', type=str, default='drnet',
                         help='Architecture to use [\'region support network\']')
     parser.add_argument('--dataset', nargs='?', type=str, default='nyu',
                         help='Dataset to use [\'sceneflow and kitti etc\']')
@@ -203,7 +211,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_150_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_best_model.pkl',
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=False,
                         help='Show visualization(s) on visdom | False by  default')
