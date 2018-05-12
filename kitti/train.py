@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-11 20:44:24
+# @Last Modified time: 2018-05-12 10:39:48
 import sys
 import torch
 import visdom
@@ -308,7 +308,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyperparams')
     parser.add_argument('--arch', nargs='?', type=str, default='rsnet',
                         help='Architecture to use [\'region support network\']')
-    parser.add_argument('--dataset', nargs='?', type=str, default='nyu',
+    parser.add_argument('--dataset', nargs='?', type=str, default='kitti',
                         help='Dataset to use [\'sceneflow and kitti etc\']')
     parser.add_argument('--img_rows', nargs='?', type=int, default=480,
                         help='Height of the input image')

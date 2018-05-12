@@ -15,5 +15,9 @@
     "nyu":
   {
     "data_path": "/home/lidong/Documents/datasets/nyu/"
-  } 
+  } ,
+    "kitti":
+  {
+    "data_path": "/home/lidong/Documents/RSDEN/RSDEN/"
+  }   
 }

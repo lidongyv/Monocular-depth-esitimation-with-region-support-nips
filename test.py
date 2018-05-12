@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-05 08:59:42
+# @Last Modified time: 2018-05-11 11:03:55
 import sys
 import torch
 import visdom
@@ -36,7 +36,7 @@ def train(args):
     # t_loader = data_loader(data_path, is_transform=True,
     #                        split='nyu2_train', img_size=(args.img_rows, args.img_cols))
     v_loader = data_loader(data_path, is_transform=True,
-                           split='test', img_size=(args.img_rows, args.img_cols))
+                           split='test_region', img_size=(args.img_rows, args.img_cols))
 
    # n_classes = t_loader.n_classes
     #trainloader = data.DataLoader(
@@ -130,11 +130,12 @@ def train(args):
         labels_val = Variable(labels_val.cuda(), requires_grad=False)
         with torch.no_grad():
             outputs = model(images_val)
+            outputs=segs
             pred = outputs.data.cpu().numpy()
-            gt = labels_val.data.cpu().numpy()
+            gt = labels_val.data.cpu().numpy()+1e-12
             ones=np.ones((gt.shape))
             zeros=np.zeros((gt.shape))
-            pred=np.reshape(pred,(gt.shape))
+            pred=np.reshape(pred,(gt.shape))+1e-12
             #gt=np.reshape(gt,[4,480,640])
             dis=np.square(gt-pred)
             error_lin.append(np.sqrt(np.mean(dis)))
@@ -203,7 +204,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_150_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_80_model.pkl',
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu1_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=False,
                         help='Show visualization(s) on visdom | False by  default')

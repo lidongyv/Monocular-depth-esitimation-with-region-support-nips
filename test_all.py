@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-08 22:34:31
+# @Last Modified time: 2018-05-12 12:48:31
 import sys
 import torch
 import visdom
@@ -154,7 +154,7 @@ def train(args):
 
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize seperately!')
-        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl')
+        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_120_model.pkl')
         rsnet.load_state_dict(checkpoint['model_state'])
         trained=checkpoint['epoch']
         print('load success from rsnet %.d'%trained)
@@ -176,13 +176,8 @@ def train(args):
         rsnet.train()
         drnet.train()
            
-        if epoch>50:
-            check=2
-        else:
-            check=3
-        if epoch>70:
-            check=1      
-        if epoch%check==0:    
+   
+        if epoch%1==0:    
             print('testing!')
             rsnet.train()
             drnet.train()
@@ -254,6 +249,7 @@ def train(args):
             print('Final Result!')
             print("error_lin=%.4f,error_log=%.4f,error_va=%.4f,error_absrd=%.4f,error_squrd=%.4f,thre1=%.4f,thre2=%.4f,thre3=%.4f"
                 %(error_lin,error_log,error_va,error_absrd,error_squrd,thre1,thre2,thre3))
+            break;
 
 
 

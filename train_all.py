@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-08 23:22:59
+# @Last Modified time: 2018-05-12 21:16:31
 import sys
 import torch
 import visdom
@@ -90,7 +90,11 @@ def train(args):
 
         ground_window = vis.image(
             np.random.rand(480, 640),
-            opts=dict(title='ground!', caption='ground.'),
+            opts=dict(title='ground!', caption='ground.')
+            ),
+        region_window = vis.image(
+            np.random.rand(480, 640),
+            opts=dict(title='region!', caption='region.'),            
         )
     cuda0=torch.device('cuda:0')
     cuda1=torch.device('cuda:1')
@@ -112,7 +116,7 @@ def train(args):
         # optimizer = torch.optim.Adam(
         #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
         optimizer = torch.optim.SGD(
-            parameters, lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
+            drnet.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
     if hasattr(rsnet.module, 'loss'):
         print('Using custom loss')
         loss_fn = rsnet.module.loss
@@ -124,16 +128,17 @@ def train(args):
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
-            #model_dict=model.state_dict()  
-            #opt=torch.load('/home/lidong/Documents/RSDEN/RSDEN/exp1/l2/sgd/log/83/rsnet_nyu_best_model.pkl')
-            model.load_state_dict(checkpoint['model_state'])
+            checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl')
+            rsnet.load_state_dict(checkpoint['model_state'])
             #optimizer.load_state_dict(checkpoint['optimizer_state'])
-            #opt=None
-            print("Loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
             best_error=checkpoint['error']
+            print('load success from rsnet %.d'%trained)
+            checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_best_model.pkl')
+            drnet.load_state_dict(checkpoint['model_state'])
+            #optimizer.load_state_dict(checkpoint['optimizer_state'])
+            trained=checkpoint['epoch']
+            print('load success from drnet %.d'%trained)
             
             #print('load success!')
             loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
@@ -154,17 +159,19 @@ def train(args):
 
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize seperately!')
-        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_best_model.pkl')
+        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_15_model.pkl')
         rsnet.load_state_dict(checkpoint['model_state'])
         trained=checkpoint['epoch']
         best_error=checkpoint['error']
         print('load success from rsnet %.d'%trained)
-        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_best_model.pkl')
+        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_15_model.pkl')
         drnet.load_state_dict(checkpoint['model_state'])
         #optimizer.load_state_dict(checkpoint['optimizer_state'])
         trained=checkpoint['epoch']
         print('load success from drnet %.d'%trained)
         trained=0
+        loss_rec=[]
+        average_loss=checkpoint['error']
     
 
 
@@ -173,7 +180,7 @@ def train(args):
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
     #for epoch in range(0, args.n_epoch):
-                
+
         #trained
         print('training!')
         rsnet.train()
@@ -181,21 +188,33 @@ def train(args):
         for i, (images, labels,segments) in enumerate(trainloader):
             images = images.cuda()
             labels = labels.cuda(cuda2)
+
+            #for error_sample in range(10):
             optimizer.zero_grad()
-            region_support = rsnet(images)
-            coarse_depth=torch.cat([images,region_support],1)
-            outputs=drnet(coarse_depth)
+            with torch.autograd.no_grad():
+                region_support = rsnet(images)
+                with torch.autograd.enable_grad():
+                    coarse_depth=torch.cat([images,region_support],1)
+                    #with torch.no_grad():
+                    outputs=drnet(coarse_depth)
             #outputs.append(region_support)
             #outputs=torch.reshape(outputs,[outputs.shape[0],1,outputs.shape[1],outputs.shape[2]])
             #outputs=outputs
             loss = loss_fn(input=outputs, target=labels)
             out=loss[0]+loss[1]+loss[2]
-            a=l1(region_support,labels.to(cuda0)).to(cuda2)
-            out=(out/3+a)/2
+            out=out/3
+            #a=l1(region_support,labels.to(cuda0)).to(cuda2)
+            #out=(out/3+a)/2
             #a.backward()
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
             out.backward()
             optimizer.step()
+            # print('out:%.4f,error_sample:%d'%(out.item(),error_sample))
+            # if i==0:
+            #     average_loss=(average_loss+out.item())/2
+            #     break
+            # if out.item()<average_loss/i:
+            #     break
             # print(torch.Tensor([loss.data[0]]).unsqueeze(0).cpu())
             #print(loss.item()*torch.ones(1).cpu())
             #nyu2_train:246,nyu2_all:1632
@@ -257,15 +276,24 @@ def train(args):
                     opts=dict(title='ground!', caption='ground.'),
                     win=ground_window,
                 )
-            
+                region_vis=region_support.data.cpu().numpy().astype('float32')
+                #print(ground.shape)
+                region_vis = region_vis[0, :, :]
+                region_vis = (np.reshape(region_vis, [480, 640]).astype('float32')-np.min(region_vis))/(np.max(region_vis)-np.min(region_vis))
+                vis.image(
+                    region_vis,
+                    opts=dict(title='region_vis!', caption='region_vis.'),
+                    win=region_window,
+                )
+            average_loss+=out.item()
             loss_rec.append([i+epoch*1632,torch.Tensor([loss[0].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[1].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[2].item()]).unsqueeze(0).cpu()])
-            print("data [%d/1632/%d/%d] Loss1: %.4f Loss2: %.4f Loss3: %.4f" % (i, epoch, args.n_epoch,loss[0].item(),loss[1].item(),loss[2].item()))
+            print("data [%d/1632/%d/%d] Loss1: %.4f Loss2: %.4f Loss3: %.4f out:%.4f " % (i, epoch, args.n_epoch,loss[0].item(),loss[1].item(),loss[2].item(),out.item()))
 
-           
+        #average_loss=average_loss/816       
         if epoch>50:
-            check=2
-        else:
             check=3
+        else:
+            check=5
         if epoch>70:
             check=1                 
         if epoch%check==0:    
@@ -347,7 +375,7 @@ def train(args):
                     'drnet', args.dataset))                
                 print('save success')
             np.save('/home/lidong/Documents/RSDEN/RSDEN//loss.npy',loss_rec)
-        if epoch%15==0:
+        if epoch%5==0:
             #best_error = error
             state = {'epoch': epoch+1,
                      'model_state': rsnet.state_dict(),
