@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-05 15:51:27
+# @Last Modified time: 2018-05-21 19:15:23
 
 import torch
 import numpy as np
@@ -114,7 +114,7 @@ class drn(nn.Module):
         layers=[3, 4, 6, 3]
         block=BasicBlock
         # Encoder
-        self.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=1, padding=1,
+        self.conv1 = nn.Conv2d(5, 64, kernel_size=7, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
@@ -164,7 +164,7 @@ class drn(nn.Module):
 
         return nn.Sequential(*layers)                                                                                                                 
     def forward(self, x):
-        rgb=x[:,0:3,:,:]
+        rgb=x[:,0:4,:,:]
         #print(x.shape)
         out=[]
         for i in range(3):

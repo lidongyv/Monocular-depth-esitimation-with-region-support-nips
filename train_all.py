@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-12 21:16:31
+# @Last Modified time: 2018-05-18 14:05:06
 import sys
 import torch
 import visdom
@@ -35,9 +35,9 @@ def train(args):
     data_loader = get_loader(args.dataset)
     data_path = get_data_path(args.dataset)
     t_loader = data_loader(data_path, is_transform=True,
-                           split='train_region', img_size=(args.img_rows, args.img_cols))
+                           split='train_region', img_size=(args.img_rows, args.img_cols),task='all')
     v_loader = data_loader(data_path, is_transform=True,
-                           split='test_region', img_size=(args.img_rows, args.img_cols))
+                           split='test_region', img_size=(args.img_rows, args.img_cols),task='all')
 
     n_classes = t_loader.n_classes
     trainloader = data.DataLoader(
@@ -56,7 +56,13 @@ def train(args):
         #                        opts=dict(xlabel='minibatches',
         #                                  ylabel='Loss',
         #                                  title='Trained Loss',
-        #                                  legend=['Loss']))
+        #                                  legend=['Loss'])
+        a_window = vis.line(X=torch.zeros((1,)).cpu(),
+                               Y=torch.zeros((1)).cpu(),
+                               opts=dict(xlabel='minibatches',
+                                         ylabel='Loss',
+                                         title='Region Loss1',
+                                         legend=['Region']))
         loss_window1 = vis.line(X=torch.zeros((1,)).cpu(),
                                Y=torch.zeros((1)).cpu(),
                                opts=dict(xlabel='minibatches',
@@ -114,14 +120,15 @@ def train(args):
         optimizer = drnet.module.optimizer
     else:
         # optimizer = torch.optim.Adam(
-        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
+        #     rsnet.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
         optimizer = torch.optim.SGD(
-            drnet.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
+            rsnet.parameters(), lr=args.l_rate,momentum=0.99, weight_decay=5e-4)
     if hasattr(rsnet.module, 'loss'):
         print('Using custom loss')
         loss_fn = rsnet.module.loss
     else:
-        loss_fn = l1_r
+        loss_fn = log_r
+        #loss_fn = region_r
     trained=0
     scale=100
 
@@ -159,19 +166,55 @@ def train(args):
 
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize seperately!')
-        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_15_model.pkl')
+        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsnet_nyu_135_model.pkl')
         rsnet.load_state_dict(checkpoint['model_state'])
         trained=checkpoint['epoch']
         best_error=checkpoint['error']
+        print(best_error)
         print('load success from rsnet %.d'%trained)
-        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_15_model.pkl')
+        checkpoint=torch.load('/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_135_model.pkl')
+
+        # model_dict=drnet.state_dict()            
+        # pre_dict={k: v for k, v in checkpoint['model_state'].items() if k in model_dict}
+
+        # model_dict.update(pre_dict)
+        # #print(model_dict['module.conv1.weight'].shape)
+        # model_dict['module.conv1.weight']=torch.cat([model_dict['module.conv1.weight'],torch.reshape(model_dict['module.conv1.weight'][:,3,:,:],[64,1,7,7])],1)
+        # #print(model_dict['module.conv1.weight'].shape)
+        # drnet.load_state_dict(model_dict)
         drnet.load_state_dict(checkpoint['model_state'])
         #optimizer.load_state_dict(checkpoint['optimizer_state'])
         trained=checkpoint['epoch']
         print('load success from drnet %.d'%trained)
-        trained=0
+        #trained=0
         loss_rec=[]
-        average_loss=checkpoint['error']
+        #loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
+        #loss_rec=list(loss_rec)
+        #loss_rec=loss_rec[:1632*trained]
+        #average_loss=checkpoint['error']
+        # opti_dict=optimizer.state_dict()
+        # #pre_dict={k: v for k, v in checkpoint['optimizer_state'].items() if k in opti_dict}
+        # pre_dict=checkpoint['optimizer_state']
+        # # for k,v in pre_dict.items():
+        # #     print(k)
+        # #     if k=='state':
+        # #         #print(v.type)
+        # #         for a,b in v.items():
+        # #             print(a)
+        # #             print(b['momentum_buffer'].shape)
+        # #return 0
+        # opti_dict.update(pre_dict)
+        # # for k,v in opti_dict.items():
+        # #     print(k)
+        # #     if k=='state':
+        # #         #print(v.type)
+        # #         for a,b in v.items():
+        # #             if a==140011149405280:
+        # #                 print(b['momentum_buffer'].shape)
+        # #print(opti_dict['state'][140011149405280]['momentum_buffer'].shape)
+        # opti_dict['state'][140011149405280]['momentum_buffer']=torch.cat([opti_dict['state'][140011149405280]['momentum_buffer'],torch.reshape(opti_dict['state'][140011149405280]['momentum_buffer'][:,3,:,:],[64,1,7,7])],1)
+        # #print(opti_dict['module.conv1.weight'].shape)
+        # optimizer.load_state_dict(opti_dict)
     
 
 
@@ -188,23 +231,26 @@ def train(args):
         for i, (images, labels,segments) in enumerate(trainloader):
             images = images.cuda()
             labels = labels.cuda(cuda2)
-
+            segments=segments.cuda(cuda2)
             #for error_sample in range(10):
             optimizer.zero_grad()
-            with torch.autograd.no_grad():
-                region_support = rsnet(images)
-                with torch.autograd.enable_grad():
-                    coarse_depth=torch.cat([images,region_support],1)
-                    #with torch.no_grad():
-                    outputs=drnet(coarse_depth)
+            #with torch.autograd.enable_grad():
+            region_support = rsnet(images)
+                #with torch.autograd.enable_grad():
+            coarse_depth=torch.cat([images,region_support],1)
+            coarse_depth=torch.cat([coarse_depth,region_support],1)
+            #with torch.no_grad():
+            outputs=drnet(coarse_depth)
             #outputs.append(region_support)
             #outputs=torch.reshape(outputs,[outputs.shape[0],1,outputs.shape[1],outputs.shape[2]])
             #outputs=outputs
             loss = loss_fn(input=outputs, target=labels)
-            out=loss[0]+loss[1]+loss[2]
-            out=out/3
-            #a=l1(region_support,labels.to(cuda0)).to(cuda2)
-            #out=(out/3+a)/2
+            out=0.2*loss[0]+0.3*loss[1]+0.5*loss[2]
+            #out=out
+            a=l1(input=region_support,target=labels.to(cuda0))
+            #a=region_log(input=region_support,target=labels.to(cuda0),instance=segments.to(cuda0)).to(cuda2)
+            b=log_loss(region_support,labels.to(cuda0)).item()
+            #out=0.8*out+0.02*a
             #a.backward()
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
             out.backward()
@@ -219,6 +265,11 @@ def train(args):
             #print(loss.item()*torch.ones(1).cpu())
             #nyu2_train:246,nyu2_all:1632
             if args.visdom:
+                vis.line(
+                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*1632,
+                    Y=a.item()*torch.ones(1).cpu(),
+                    win=a_window,
+                    update='append')
                 vis.line(
                     X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*1632,
                     Y=loss[0].item()*torch.ones(1).cpu(),
@@ -285,15 +336,15 @@ def train(args):
                     opts=dict(title='region_vis!', caption='region_vis.'),
                     win=region_window,
                 )
-            average_loss+=out.item()
+            #average_loss+=out.item()
             loss_rec.append([i+epoch*1632,torch.Tensor([loss[0].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[1].item()]).unsqueeze(0).cpu(),torch.Tensor([loss[2].item()]).unsqueeze(0).cpu()])
-            print("data [%d/1632/%d/%d] Loss1: %.4f Loss2: %.4f Loss3: %.4f out:%.4f " % (i, epoch, args.n_epoch,loss[0].item(),loss[1].item(),loss[2].item(),out.item()))
+            print("data [%d/1632/%d/%d]region:%.4f,%.4f Loss1: %.4f Loss2: %.4f Loss3: %.4f out:%.4f " % (i, epoch, args.n_epoch,a.item(),b,loss[0].item(),loss[1].item(),loss[2].item(),out.item()))
 
         #average_loss=average_loss/816       
         if epoch>50:
-            check=3
+            check=1
         else:
-            check=5
+            check=1
         if epoch>70:
             check=1                 
         if epoch%check==0:    
@@ -320,6 +371,7 @@ def train(args):
                 with torch.no_grad():
                     region_support = rsnet(images)
                     coarse_depth=torch.cat([images,region_support],1)
+                    coarse_depth=torch.cat([coarse_depth,region_support],1)
                     outputs=drnet(coarse_depth)
                     pred = outputs[2].data.cpu().numpy()
                     gt = labels.data.cpu().numpy()
@@ -355,6 +407,8 @@ def train(args):
                         thre1[i_val],
                         thre2[i_val],
                         thre3[i_val]))
+                    # if i_val > 219/check:
+                    #     break
             error=np.mean(error_lin)
             #error_rate=np.mean(error_rate)
             print("error=%.4f"%(error))
@@ -375,7 +429,7 @@ def train(args):
                     'drnet', args.dataset))                
                 print('save success')
             np.save('/home/lidong/Documents/RSDEN/RSDEN//loss.npy',loss_rec)
-        if epoch%5==0:
+        if epoch%3==0:
             #best_error = error
             state = {'epoch': epoch+1,
                      'model_state': rsnet.state_dict(),

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-12 15:35:18
+# @Last Modified time: 2018-05-15 21:28:52
 
 import torch
 import numpy as np
@@ -46,9 +46,9 @@ def log_r(input, target, weight=None, size_average=True):
         # print(num)
         input[i]=torch.log(input[i]+1e-6)  
         relation.append(loss(input[i],target))
-        d.append(0.5*torch.pow(torch.sum(input[i]-target),2)/torch.pow(torch.sum(torch.ones_like(input[i])),2))
-        out.append(relation[i]-d[i])
-    return out     
+        #d.append(0.5*torch.pow(torch.sum(input[i]-target),2)/torch.pow(torch.sum(torch.ones_like(input[i])),2))
+        #out.append(relation[i]-d[i])
+    return relation     
 def cross_entropy2d(input, target, weight=None, size_average=True):
     n, c, h, w = input.size()
     #print(c,target.max().data.cpu().numpy())
@@ -106,8 +106,8 @@ def log_loss(input, target, weight=None, size_average=True):
     #relation=torch.sqrt(loss(input,target)) 
     relation=loss(input,target) 
     d=0.5*torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)
- 
-    return relation-d 
+    #relation=relation-d 
+    return relation
 
     # target=torch.reshape(target,(input.shape))
     # #loss=nn.MSELoss()
@@ -201,8 +201,8 @@ def region_log(input,target,instance):
     loss=0
     lf=nn.MSELoss(size_average=False,reduce=False)
     target=torch.reshape(target,(input.shape))
-    input=torch.log(input+1e-12) 
-    target=torch.log(target+1e-12) 
+    input=torch.log(input+1e-6) 
+    target=torch.log(target+1e-6) 
     instance=torch.reshape(instance,(input.shape))
     zero=torch.zeros_like(input)
     one=torch.ones_like(input)
@@ -212,9 +212,33 @@ def region_log(input,target,instance):
         num=torch.sum(torch.where(instance==i,one,zero))
         average=torch.sum(dis_region)/num
         loss=loss+average
-        dis_region=torch.where(instance==i,dis_region-average,zero)
-        var=(torch.sum(torch.pow(dis_region,2))/num)/average
-        loss=loss+var
+        # dis_region=torch.where(instance==i,dis_region-average,zero)
+        # var=(torch.sum(torch.pow(dis_region,2))/num)/average
+        # loss=loss+var
     loss=loss/(torch.max(instance))
+    #print(torch.max(instance).item())
     return loss
 
+
+def region_r(input,target,instance):
+    loss=0
+    relation=[]
+    lf=nn.MSELoss(size_average=False,reduce=False)
+    target=torch.reshape(target,(input[0].shape))
+ 
+    target=torch.log(target+1e-6) 
+    instance=torch.reshape(instance,(input[0].shape))
+    zero=torch.zeros_like(input[0])
+    one=torch.ones_like(input[0])
+    for i in range(3):
+        input[i]=torch.log(input[i]+1e-6)
+        dis=lf(input[i],target)
+        for i in range(1,int(torch.max(instance).item()+1)):
+            dis_region=torch.where(instance==i,dis,zero)
+            num=torch.sum(torch.where(instance==i,one,zero))
+            average=torch.sum(dis_region)/num
+            loss=loss+average
+        #print(torch.max(instance).item())
+        relation.append(loss/(torch.max(instance)))
+        loss=0
+    return relation

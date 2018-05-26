@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-07 20:39:17
+# @Last Modified time: 2018-05-16 22:08:22
 import sys
 import torch
 import visdom
@@ -123,35 +123,66 @@ def train(args):
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
-            #model_dict=model.state_dict()  
-            #opt=torch.load('/home/lidong/Documents/RSDEN/RSDEN/exp1/l2/sgd/log/83/rsnet_nyu_best_model.pkl')
-            model.load_state_dict(checkpoint['model_state'])
-            #optimizer.load_state_dict(checkpoint['optimizer_state'])
-            #opt=None
+            model_dict=model.state_dict()            
+            pre_dict={k: v for k, v in checkpoint['model_state'].items() if k in model_dict}
+
+            model_dict.update(pre_dict)
+            #print(model_dict['module.conv1.weight'].shape)
+            model_dict['module.conv1.weight']=torch.cat([model_dict['module.conv1.weight'],torch.reshape(model_dict['module.conv1.weight'][:,3,:,:],[64,1,7,7])],1)
+            #print(model_dict['module.conv1.weight'].shape)
+            model.load_state_dict(model_dict)            
+            #model.load_state_dict(checkpoint['model_state'])
+            optimizer.load_state_dict(checkpoint['optimizer_state'])
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
-            best_error=checkpoint['error']
+            print('load success!')
+            #optimizer.load_state_dict(checkpoint['optimizer_state'])
+            #opt=None
+            opti_dict=optimizer.state_dict()
+            #pre_dict={k: v for k, v in checkpoint['optimizer_state'].items() if k in opti_dict}
+            pre_dict=checkpoint['optimizer_state']
+            # for k,v in pre_dict.items():
+            #     print(k)
+            #     if k=='state':
+            #         #print(v.type)
+            #         for a,b in v.items():
+            #             print(a)
+            #             print(b['momentum_buffer'].shape)
+            # return 0
+            opti_dict.update(pre_dict)
+            # for k,v in opti_dict.items():
+            #     print(k)
+            #     if k=='state':
+            #         #print(v.type)
+            #         for a,b in v.items():
+            #             if a==140011149405280:
+            #                 print(b['momentum_buffer'].shape)
+            #print(opti_dict['state'][140011149405280]['momentum_buffer'].shape)
+            opti_dict['state'][139629660382048]['momentum_buffer']=torch.cat([opti_dict['state'][139629660382048]['momentum_buffer'],torch.reshape(opti_dict['state'][139629660382048]['momentum_buffer'][:,3,:,:],[64,1,7,7])],1)
+            #print(opti_dict['module.conv1.weight'].shape)
+            optimizer.load_state_dict(opti_dict)
+            best_error=checkpoint['error']+0.15
             
-            #print('load success!')
-            loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
-            loss_rec=list(loss_rec)
-            loss_rec=loss_rec[:816*trained]
-            # for i in range(300):
-            #     loss_rec[i][1]=loss_rec[i+300][1]
-            for l in range(int(len(loss_rec)/816)):
-                if args.visdom:
-                    #print(np.array(loss_rec[l])[1:])
-                    # vis.line(
-                    #     X=torch.ones(1).cpu() * loss_rec[l][0],
-                    #     Y=np.mean(np.array(loss_rec[l])[1:])*torch.ones(1).cpu(),
-                    #     win=old_window,
-                    #     update='append')
-                    vis.line(
-                        X=torch.ones(1).cpu() * loss_rec[l*816][0],
-                        Y=np.mean(np.array(loss_rec[l*816:(l+1)*816])[:,1])*torch.ones(1).cpu(),
-                        win=old_window,
-                        update='append')                    
+            # #print('load success!')
+            # loss_rec=np.load('/home/lidong/Documents/RSDEN/RSDEN/loss.npy')
+            # loss_rec=list(loss_rec)
+            # loss_rec=loss_rec[:816*trained]
+            # # for i in range(300):
+            # #     loss_rec[i][1]=loss_rec[i+300][1]
+            # for l in range(int(len(loss_rec)/816)):
+            #     if args.visdom:
+            #         #print(np.array(loss_rec[l])[1:])
+            #         # vis.line(
+            #         #     X=torch.ones(1).cpu() * loss_rec[l][0],
+            #         #     Y=np.mean(np.array(loss_rec[l])[1:])*torch.ones(1).cpu(),
+            #         #     win=old_window,
+            #         #     update='append')
+            #         vis.line(
+            #             X=torch.ones(1).cpu() * loss_rec[l*816][0],
+            #             Y=np.mean(np.array(loss_rec[l*816:(l+1)*816])[:,1])*torch.ones(1).cpu(),
+            #             win=old_window,
+            #             update='append')                    
             
     else:
 
@@ -163,7 +194,7 @@ def train(args):
         # for k,v in resnet34['model_state'].items():
         #     print(k)
         pre_dict={k: v for k, v in resnet34['model_state'].items() if k in model_dict}
-        # for k,v in pre_dict.items():
+        # for k,v in pre_dict.items():e
         #     print(k)
 
         model_dict.update(pre_dict)
@@ -192,12 +223,13 @@ def train(args):
             # print(segments.shape)
             # print(images.shape)
             images=torch.cat([images,segments],1)
+            images=torch.cat([images,segments],1)
             optimizer.zero_grad()
             outputs = model(images)
             #outputs=torch.reshape(outputs,[outputs.shape[0],1,outputs.shape[1],outputs.shape[2]])
             #outputs=outputs
             loss = loss_fn(input=outputs, target=labels)
-            out=loss[0]+loss[1]+loss[2]
+            out=0.2*loss[0]+0.3*loss[1]+0.5*loss[2]
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
             out.backward()
             optimizer.step()
@@ -295,6 +327,7 @@ def train(args):
                 labels_val = Variable(labels_val.cuda(), requires_grad=False)
                 segments = Variable(segments.cuda())
                 images_val=torch.cat([images_val,segments],1)
+                images_val=torch.cat([images_val,segments],1)
                 with torch.no_grad():
                     outputs = model(images_val)
                     pred = outputs[2].data.cpu().numpy()
@@ -377,7 +410,7 @@ if __name__ == '__main__':
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')
-    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_70_model.pkl',
+    parser.add_argument('--resume', nargs='?', type=str, default='/home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_best_model.pkl',
                         help='Path to previous saved model to restart from /home/lidong/Documents/RSDEN/RSDEN/drnet_nyu_best_model.pkl')
     parser.add_argument('--visdom', nargs='?', type=bool, default=True,
                         help='Show visualization(s) on visdom | False by  default')

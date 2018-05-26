@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-08 11:06:04
+# @Last Modified time: 2018-05-18 22:18:15
 
 
 import os
@@ -40,12 +40,19 @@ class NYU(data.Dataset):
             raise Exception("No files for %s found in %s" % (split, self.path))
 
         print("Found %d in %s images" % (len(self.files), self.path))
+        self.task=task
         if task=='depth':
             self.d=3
             self.r=5
         else:
             self.d=5
             self.r=7
+        if task=='all':
+            self.d=3
+            self.r=7 
+        if task=='visualize':
+            self.d=3
+            self.r=5      
     def __len__(self):
         """__len__"""
         return len(self.files)
@@ -56,6 +63,9 @@ class NYU(data.Dataset):
         :param index:
         """
         data=np.load(os.path.join(self.path,self.files[index]))
+        if self.task=='visualize':
+            data=data[0,:,:,:]
+        print(data.shape)
         img = data[:,:,0:3]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
@@ -63,6 +73,11 @@ class NYU(data.Dataset):
         depth = data[:,:,self.d]
         segments = data[:,:,self.r]
         segments=np.reshape(segments,[1,segments.shape[0],segments.shape[1]])
+        if self.task=='visualize':
+            rgb=img
+            img, depth,segments = self.transform(img, depth,segments)
+            return img, depth,segments,data
+
         if self.is_transform:
             img, depth,segments = self.transform(img, depth,segments)
 

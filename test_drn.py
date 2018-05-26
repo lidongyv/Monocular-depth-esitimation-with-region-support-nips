@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-07 20:54:32
+# @Last Modified time: 2018-05-17 09:57:34
 import sys
 import torch
 import visdom
@@ -91,8 +91,16 @@ def train(args):
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
+            # model_dict=model.state_dict()            
+            # pre_dict={k: v for k, v in checkpoint['model_state'].items() if k in model_dict}
+
+            # model_dict.update(pre_dict)
+            # #print(model_dict['module.conv1.weight'].shape)
+            # model_dict['module.conv1.weight']=torch.cat([model_dict['module.conv1.weight'],torch.reshape(model_dict['module.conv1.weight'][:,3,:,:],[64,1,7,7])],1)
+            # #print(model_dict['module.conv1.weight'].shape)
+            # model.load_state_dict(model_dict)            
             model.load_state_dict(checkpoint['model_state'])
-            optimizer.load_state_dict(checkpoint['optimizer_state'])
+            # optimizer.load_state_dict(checkpoint['optimizer_state'])
             print("Loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
             trained=checkpoint['epoch']
@@ -131,6 +139,7 @@ def train(args):
         segs = Variable(segs.cuda(), requires_grad=False)
         # print(segments.shape)
         # print(images.shape)
+        images_val=torch.cat([images_val,segs],1)
         images_val=torch.cat([images_val,segs],1)
         with torch.no_grad():
             outputs = model(images_val)
