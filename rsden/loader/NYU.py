@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-18 22:18:15
+# @Last Modified time: 2018-07-27 21:48:49
 
 
 import os
@@ -16,8 +16,6 @@ from rsden.utils import recursive_glob
 import torchvision.transforms as transforms
 
 class NYU(data.Dataset):
-
-
     def __init__(self, root, split="train", is_transform=True, img_size=(480,640),task='depth'):
         """__init__
 

@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-12 13:57:56
+# @Last Modified time: 2018-07-25 22:42:58
 
 
 import os
@@ -15,12 +15,11 @@ from python_pfm import *
 from rsden.utils import recursive_glob
 import torchvision.transforms as transforms
 from PIL import Image
-#img=np.array(Image.open('/home/lidong/Documents/datasets/single_driver/data_depth_annotated/train/2011_09_28_drive_0094_sync/proj_depth/groundtruth/image_02/0000000005.png'),dtype=int)
 
 class KITTI(data.Dataset):
 
 
-    def __init__(self, root, split="train", is_transform=True):
+    def __init__(self, root, split="train", img_size=(375,1242),is_transform=True,task='all'):
         """__init__
 
         :param root:
@@ -28,6 +27,7 @@ class KITTI(data.Dataset):
         :param is_transform:
         :param img_size:
         """
+        self.shape=img_size
         self.root = root
         self.split = split
         self.num=0
@@ -50,59 +50,60 @@ class KITTI(data.Dataset):
         :param index:
         """
         #data=np.load(os.path.join(self.path,self.files[index]))
-        img = np.array(Image.open(self.images[index]),dtype=int)
+        img = Image.open(self.images[index])
         #dis=np.array(dis[0], dtype=np.uint8)
 
-        depth = np.array(Image.open(self.grounds[index]),dtype=int)
+        depth = Image.open(self.grounds[index])
         if self.is_transform:
             img, depth= self.transform(img, depth)
 
         return img, depth
+    def get_params(self,img):
+        """Get parameters for ``crop`` for a random crop.
 
+        Args:
+            img (PIL Image): Image to be cropped.
+            output_size (tuple): Expected output size of the crop.
+
+        Returns:
+            tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
+        """
+        w, h = img.size
+        th=360
+        tw=800
+        if w == tw and h == th:
+            return 0, 0, h, w
+
+        i = np.random.randint(0, h - th)
+        j = np.random.randint(0, w - tw)
+        return i, j, th, tw
     def transform(self, img, depth):
         """transform
 
         :param img:
         :param depth:
         """
-        img = img[:,:,:]
-        #print(img.shape)
-        img = img.astype(np.float64)
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
         #img = torch.from_numpy(img).float()
-        crop_size=np.array(np.where(depth>0))
-        x_min=np.min(crop_size[0,:])
-        x_max=np.max(crop_size[0,:])
-        y_min=np.min(crop_size[1,:])
-        y_max=np.max(crop_size[1,:])
-        depth=depth[x_min:x_max,y_min:y_max]
-        img=img[x_min:x_max,y_min:y_max,:]        
-        depth = torch.from_numpy(depth).float()/256
 
         #img = img.astype(float) / 255.0
         # NHWC -> NCHW
         #img = img.transpose(1,2,0)
+        #img=np.array(img)
         totensor=transforms.ToTensor()
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+                       std=[0.229, 0.224, 0.225])
+        #padding=transforms.Pad(padding=(0,0,0,0),padding_mode='edge')
+        i,j,h,w=self.get_params(img)
+        #img=padding(img)
+        depth=depth.crop((j, i, j + w, i + h)) 
+        depth=np.array(depth).astype(np.float32)/256
+        depth=torch.from_numpy(depth)
+        img=img.crop((j, i, j + w, i + h)) 
         img=totensor(img)
-        img=normalize(img)
-        #depth=depth[0,:,:]
-        #depth = depth.astype(float)/32
-        #depth = np.round(depth)
-        #depth = m.imresize(depth, (self.img_size[0], self.img_size[1]), 'nearest', mode='F')
-        #depth = depth.astype(int)
-        #depth=np.reshape(depth,[1,depth.shape[0],depth.shape[1]])
-        #classes = np.unique(depth)
-        #print(classes)
-        #depth = depth.transpose(2,0,1)
-        #if not np.all(classes == np.unique(depth)):
-        #    print("WARN: resizing segmentss yielded fewer classes")
+        img=normalize(img)      
+        #depth=padding(depth)
 
-        #if not np.all(classes < self.n_classes):
-        #    raise ValueError("Segmentation map contained invalid class values")
-
-
-
-        return img, depth,segments
+        #print(img.shape,depth.shape)
+        return img,depth

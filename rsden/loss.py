@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-15 21:28:52
+# @Last Modified time: 2018-07-25 23:29:43
 
 import torch
 import numpy as np
@@ -48,7 +48,35 @@ def log_r(input, target, weight=None, size_average=True):
         relation.append(loss(input[i],target))
         #d.append(0.5*torch.pow(torch.sum(input[i]-target),2)/torch.pow(torch.sum(torch.ones_like(input[i])),2))
         #out.append(relation[i]-d[i])
-    return relation     
+    return relation
+
+def log_kitti(input, target, weight=None, size_average=True):
+    zero=torch.zeros_like(input)
+    target=torch.reshape(target,(input.shape))
+    loss=nn.MSELoss(size_average=False) 
+    input=torch.where(target>0,torch.log(input),zero)
+    target=torch.where(target>0,torch.log(target),zero)
+
+    #relation=torch.sqrt(loss(input,target)) 
+    relation=loss(input,target)/torch.sum(torch.where(target>0,torch.ones_like(input),zero))
+    d=0.5*torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.where(target>0,torch.ones_like(input),zero)),2)
+ 
+def log_r_kitti(input, target, weight=None, size_average=True):
+
+    relation=[]
+    d=[]
+    out=[]
+    target=torch.reshape(target,(input[0].shape))
+    zero=torch.zeros_like(target)
+    target=torch.where(target>0,torch.log(target),zero)
+    loss=nn.MSELoss(size_average=False)
+    one=torch.ones_like(target)
+    num=torch.sum(torch.where(target>0,one,zero))
+    for i in range(3):
+        pre=torch.where(target>0,torch.log(input[i]),zero)
+        relation.append(loss(pre,target)/num)
+    return relation 
+         
 def cross_entropy2d(input, target, weight=None, size_average=True):
     n, c, h, w = input.size()
     #print(c,target.max().data.cpu().numpy())
