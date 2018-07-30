@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-25 23:29:43
+# @Last Modified time: 2018-07-30 10:17:56
 
 import torch
 import numpy as np
@@ -76,7 +76,93 @@ def log_r_kitti(input, target, weight=None, size_average=True):
         pre=torch.where(target>0,torch.log(input[i]),zero)
         relation.append(loss(pre,target)/num)
     return relation 
-         
+def mask_depth_loss(depth,mask,target,segment):
+    mask=mask.float()
+    target=target.float()
+    depth=depth.float()
+    segment=segment.float()
+    #mse=nn.MSELoss(size_average=False)
+    mask_map=torch.argmax(mask,dim=1)
+    one=torch.ones_like(mask_map).float()
+    zeros=torch.zeros_like(mask_map).float()
+    mask_map_r=torch.where(mask_map==1,one,zeros)
+    mask_ground=torch.where(segment==1,one,zeros)
+    #print(mask_ground.device)
+    #print(target.device)
+    loss=torch.pow(torch.sum(mask_map_r*depth)/(torch.sum(mask_map_r)+1)-torch.sum(mask_ground*target)/(torch.sum(mask_ground)+1),2)
+    region=torch.zeros_like(mask_map_r)     
+    for i in range(2,torch.max(mask_map.int())+1):
+        mask_map_r=torch.where(mask_map==i,one,zeros)
+        mask_ground=torch.where(segment==1,one,zeros)
+        loss+=torch.pow(torch.sum(mask_map_r*depth)/(torch.sum(mask_map_r)+1)-torch.sum(mask_ground*target)/(torch.sum(mask_ground)+1),2)
+        region+=mask_map_r*torch.sum(mask_map_r*depth)/(torch.sum(mask_map_r)+1)
+    #print(loss)       
+    return loss/torch.max(mask_map).float(),region
+
+def region_loss(depth,mask,target,segment):
+    mask=mask.float()
+    target=target.float()
+    target=torch.log(target+1e-12) 
+    depth=depth.float()
+
+    segment=segment.float()
+    #mse=nn.MSELoss(size_average=False)
+    mask_map=torch.argmax(mask,dim=1).float()
+    ones=torch.ones_like(mask_map).float()
+    zeros=torch.zeros_like(mask_map).float()
+    region=torch.zeros_like(mask_map)     
+    for i in range(0,torch.max(mask_map.int())+1):
+        mask_map_r=torch.where(mask_map==i,ones,zeros)
+        region+=mask_map_r*torch.sum(mask_map_r*depth)/torch.max(torch.sum(mask_map_r),torch.ones_like(torch.sum(mask_map_r)))
+    region_l1=region
+    region=torch.log(region+1e-12)        
+    for i in range(1,torch.max(segment.int())+1):
+        mask_map_r=torch.where(segment==i,ones,zeros)
+        if i==1:
+            loss=torch.pow(torch.sum(mask_map_r*region)/(torch.sum(mask_map_r)+1)-torch.sum(mask_map_r*target)/(torch.sum(mask_map_r)+1),2)
+        else:
+            loss+=torch.pow(torch.sum(mask_map_r*region)/(torch.sum(mask_map_r)+1)-torch.sum(mask_map_r*target)/(torch.sum(mask_map_r)+1),2)
+    return loss/torch.max(segment).float(),region_l1
+def mask_loss(input,target):
+    target=torch.reshape(target,[input.shape[0],input.shape[2],input.shape[3]]).long()
+    #print(torch.max(target))
+    #print(input.shape)
+    nll=torch.nn.NLLLoss()
+    loss=nll(input,target)
+    #print(loss)
+    return loss
+def mask_loss_region(mask,segment):
+
+    segment=torch.reshape(segment,[mask.shape[0],mask.shape[2],mask.shape[3]]).float()
+    ones=torch.ones_like(segment).float()
+    zeros=torch.zeros_like(segment).float()
+    mask_map_v=torch.argmax(mask,dim=1).float()+ones
+    #mask_map_p=torch.max(mask,dim=1).float()
+    ground=torch.ones_like(segment)
+    for i in range(1,torch.max(segment.int())+1):
+        mask_r=torch.where(segment==i,mask_map_v,zeros)
+        mask_r_o=torch.where(segment==i,ones,zeros)
+        mask_o=mask_map_v-mask_r
+        mask_o_o=ones-mask_r_o
+        value=torch.bincount(torch.reshape(mask_r,(torch.sum(ones),)).int(),minlength=1)
+        mean=torch.argmax(value).float()+1
+        mask_p=torch.exp(mask[:,mean.long(),:,:])
+        #print(torch.max(mask_p))
+        inner=-torch.log(torch.sum(torch.where(mask_r==mean,mask_p,zeros))/(torch.sum(mask_r_o)+1)+1e-12)
+        #print(1-torch.sum(torch.where(mask_o==mean,mask_p,zeros))/(torch.sum(mask_o_o)+1))
+        outer=-torch.log(1-torch.sum(torch.where(mask_o==mean,mask_p,zeros))/(torch.sum(mask_o_o)+1)+1e-12)
+        #print(outer)
+        #exit()
+        #print(outer)
+        if i==1:
+            loss=inner+outer
+        else:
+            loss+=inner+outer       
+        ground=torch.where(segment==i,ground*mean,ground)
+    loss=loss/torch.max(segment)
+    nll=torch.nn.NLLLoss()
+    loss_nll=nll(mask,ground.long())
+    return loss,loss_nll
 def cross_entropy2d(input, target, weight=None, size_average=True):
     n, c, h, w = input.size()
     #print(c,target.max().data.cpu().numpy())
@@ -111,7 +197,7 @@ def l1(input, target, weight=None, size_average=True):
     #output=relation+0.2*mean
     return relation
 def l2(input, target, weight=None, size_average=True):
-    target=torch.reshape(target,(input.shape))
+    target=torch.reshape(target,(input.shape)).float()
     #print(input.shape)
     #print(target.shape)
     # num=torch.sum(torch.where(input==0,torch.ones_like(input),torch.zeros_like(input)))
@@ -125,16 +211,16 @@ def l2(input, target, weight=None, size_average=True):
     return relation
 def log_loss(input, target, weight=None, size_average=True):
     # num=torch.sum(torch.where(input==0,torch.ones_like(input),torch.zeros_like(input)))
-    # positive=num/torch.sum(torch.ones_like(input))
+    # positive=num/torch.sum(torch.ones_like(input))e
     # print(positive.item())
-    target=torch.reshape(target,(input.shape))
+    target=torch.reshape(target,(input.shape)).float()
     loss=nn.MSELoss() 
     input=torch.log(input+1e-12) 
     target=torch.log(target+1e-12) 
     #relation=torch.sqrt(loss(input,target)) 
     relation=loss(input,target) 
     d=0.5*torch.pow(torch.sum(input-target),2)/torch.pow(torch.sum(torch.ones_like(input)),2)
-    #relation=relation-d 
+    relation=relation-d 
     return relation
 
     # target=torch.reshape(target,(input.shape))

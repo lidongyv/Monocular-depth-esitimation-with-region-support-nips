@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Author: yulidong
-# @Date:   2018-04-05 16:40:02
+# @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-04-22 15:17:27
+# @Last Modified time: 2018-07-28 21:41:33
+
 
 import os
 import torch
@@ -15,9 +16,7 @@ from rsden.utils import recursive_glob
 import torchvision.transforms as transforms
 
 class NYU2(data.Dataset):
-
-
-    def __init__(self, root, split="train", is_transform=True, img_size=(480,640)):
+    def __init__(self, root, split="train", is_transform=True, img_size=(480,640),task='depth'):
         """__init__
 
         :param root:
@@ -29,83 +28,80 @@ class NYU2(data.Dataset):
         self.split = split
         self.num=0
         self.is_transform = is_transform
-        self.n_classes = 9  # 0 is reserved for "other"
+        self.n_classes = 64  # 0 is reserved for "other"
         self.img_size = img_size if isinstance(img_size, tuple) else (480, 640)
         self.mean = np.array([104.00699, 116.66877, 122.67892])
-        if split=='nyu2_test' :
-        #or split=='nyu2_train':
-            self.data=np.load(root+split+'.npy')
-            self.fusion=False
-        else:
-            #817
-            self.data2=np.load(root+split+'.npy')
-            self.data1=np.load(root+'nyu1_all'+'.npy')
-            self.data=np.zeros([1,1,1,1])
-            self.fusion=True
-        if self.fusion:
-            length=self.data1.shape[-1]+self.data2.shape[-1]
-            print("Found %d in %s images" % (length, split))
-        else:
-            print("Found %d in %s images" % (self.data.shape[-1], split))
+        self.path=os.path.join(self.root,self.split)
+        self.files=os.listdir(self.path)
+        self.files.sort(key=lambda x:int(x[:-4]))
+        if len(self.files)<1:
+            raise Exception("No files for %s found in %s" % (split, self.path))
 
+        print("Found %d in %s images" % (len(self.files), self.path))
+        self.task=task
+        if task=='depth':
+            self.d=3
+            self.r=5
+        else:
+            self.d=5
+            self.r=7
+        if task=='all':
+            self.d=3
+            self.r=7 
+        if task=='visualize':
+            self.d=3
+            self.r=5 
+        if task=='region':
+            self.d=3
+            self.r=5
+            self.m=7                  
     def __len__(self):
         """__len__"""
-        if self.fusion:
-            return self.data1.shape[-1]+self.data2.shape[-1]
-        else:
-            return self.data.shape[-1]
+        return len(self.files)
 
     def __getitem__(self, index):
         """__getitem__
 
         :param index:
         """
-        if self.fusion:
-            #length=self.data1[-1]+self.data2[-1]
-            if index<self.data1.shape[-1]:
-                index=index
-                img = self.data1[:,:,0:3,index]
-                #dis=readPFM(disparity_path)
-                #dis=np.array(dis[0], dtype=np.uint8)
+        data=np.load(os.path.join(self.path,self.files[index]))
+        if self.task=='visualize':
+            data=data[0,:,:,:]
+        #print(data.shape)
+        img = data[:,:,0:3]
+        #dis=readPFM(disparity_path)
+        #dis=np.array(dis[0], dtype=np.uint8)
 
-                region = self.data1[:,:,3,index]
-            else:
-                index=index-self.data1.shape[-1]
+        depth = data[:,:,self.d]
+        region=data[:,:,self.r]
+        region=np.reshape(region,[1,region.shape[0],region.shape[1]])
+        segments = data[:,:,self.m]
+        segments=np.reshape(segments,[1,segments.shape[0],segments.shape[1]])
+        if self.task=='visualize':
+            rgb=img
+            img, depth,region,segments = self.transform(img, depth,region,segments)
+            return img, depth,segments,data
 
-                img = self.data2[:,:,0:3,index]
-                #dis=readPFM(disparity_path)
-                #dis=np.array(dis[0], dtype=np.uint8)
+        if self.is_transform:
+            img, depth,region,segments = self.transform(img, depth,region,segments)
 
-                region = self.data2[:,:,3,index]
+        return img, depth,region,segments
 
-            if self.is_transform:
-                img, region = self.transform(img, region)
-         
-        else:
-            img = self.data[:,:,0:3,index]
-            #dis=readPFM(disparity_path)
-            #dis=np.array(dis[0], dtype=np.uint8)
-
-            region = self.data[:,:,3,index]
-
-            if self.is_transform:
-                img, region = self.transform(img, region)
-
-        return img, region
-
-    def transform(self, img, region):
+    def transform(self, img, depth,region,segments):
         """transform
 
         :param img:
-        :param region:
+        :param depth:
         """
         img = img[:,:,:]
         #print(img.shape)
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
         #img = torch.from_numpy(img).float()
-        region = torch.from_numpy(region).float()
+        depth = torch.from_numpy(depth).long()
+        segments=torch.from_numpy(segments).long()
+        region=torch.from_numpy(region).long()
         #img = img.astype(float) / 255.0
         # NHWC -> NCHW
         #img = img.transpose(1,2,0)
@@ -114,21 +110,21 @@ class NYU2(data.Dataset):
                                      std=[0.229, 0.224, 0.225])
         img=totensor(img)
         img=normalize(img)
-        #region=region[0,:,:]
-        #region = region.astype(float)/32
-        #region = np.round(region)
-        #region = m.imresize(region, (self.img_size[0], self.img_size[1]), 'nearest', mode='F')
-        #region = region.astype(int)
-        #region=np.reshape(region,[1,region.shape[0],region.shape[1]])
-        #classes = np.unique(region)
+        #depth=depth[0,:,:]
+        #depth = depth.astype(float)/32
+        #depth = np.round(depth)
+        #depth = m.imresize(depth, (self.img_size[0], self.img_size[1]), 'nearest', mode='F')
+        #depth = depth.astype(int)
+        #depth=np.reshape(depth,[1,depth.shape[0],depth.shape[1]])
+        #classes = np.unique(depth)
         #print(classes)
-        #region = region.transpose(2,0,1)
-        #if not np.all(classes == np.unique(region)):
-        #    print("WARN: resizing labels yielded fewer classes")
+        #depth = depth.transpose(2,0,1)
+        #if not np.all(classes == np.unique(depth)):
+        #    print("WARN: resizing segmentss yielded fewer classes")
 
         #if not np.all(classes < self.n_classes):
         #    raise ValueError("Segmentation map contained invalid class values")
 
 
 
-        return img, region
+        return img, depth,region,segments

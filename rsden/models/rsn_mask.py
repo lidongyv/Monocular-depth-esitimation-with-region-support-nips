@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-27 21:44:48
+# @Last Modified time: 2018-07-28 18:52:22
 
 import torch
 import numpy as np
@@ -101,12 +101,12 @@ class rsn_mask(nn.Module):
 
 
     def __init__(self, 
-                 n_classes=9, 
+                 n_classes=64, 
                  block_config=[3, 4, 6, 3], 
                  input_size= (480, 640), 
                  version='scene'):
 
-        super(rsn, self).__init__()
+        super(rsn_mask, self).__init__()
         self.inplanes = 64
         self.block_config = rsn_specs[version]['block_config'] if version is not None else block_config
         self.n_classes = rsn_specs[version]['n_classes'] if version is not None else n_classes
@@ -125,7 +125,7 @@ class rsn_mask(nn.Module):
                                                 padding=2, stride=1, bias=False) 
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
+        # self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -141,18 +141,18 @@ class rsn_mask(nn.Module):
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(512, [[120,160],[60,80],[48,64],[24,32],[12,16],[6,8],[3,4]])
+        self.pyramid_pooling = pyramidPooling(256, [[120,160],[60,80],[48,64],[24,32],[12,16],[6,8]])
         #self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DBatchNormRelu(in_channels=1023, k_size=3, n_filters=512,
+        self.deconv0 = conv2DBatchNormRelu(in_channels=508, k_size=3, n_filters=256,
                                                 padding=1, stride=1, bias=False)        
-        # self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-        #                                          padding=1, stride=1, bias=False)
-        self.deconv2 = deconv2DBatchNormRelu(in_channels=512, n_filters=256, k_size=3, 
+        self.deconv1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+                                                 padding=1, stride=1, bias=False)
+        self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
                                                  stride=2, padding=0, output_padding=1 ,bias=False)
-        self.regress1 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+        self.regress1 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=2, stride=1, bias=False)
         self.regress2 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                   padding=1, stride=1, bias=False)
@@ -164,6 +164,16 @@ class rsn_mask(nn.Module):
                                                  padding=1, stride=1, bias=False) 
         self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
                                          padding=1, stride=1, bias=False) 
+        self.class1= conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
+                                                 padding=1, stride=1, bias=False)
+        self.class2= conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=65,
+                                                 padding=1, stride=1, bias=False)
+        self.class3= conv2DBatchNormRelu(in_channels=65, k_size=3, n_filters=65,
+                                                 padding=1, stride=1, bias=False)
+        self.class_final= torch.nn.LogSoftmax(dim=1)
+
+
+
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -195,7 +205,7 @@ class rsn_mask(nn.Module):
         #print(x.shape)
         x = self.layer3(x)
         #print(x.shape)
-        x = self.layer4(x)
+        #x = self.layer4(x)
         #print(x.shape)
         # H, W -> H/2, W/2 
         x = self.pyramid_pooling(x)
@@ -204,7 +214,7 @@ class rsn_mask(nn.Module):
         #x = self.dropout(x)
         x = self.deconv0(x)
      
-        #x = self.deconv1(x)
+        x = self.deconv1(x)
        
         x = self.deconv2(x)
        
@@ -215,11 +225,15 @@ class rsn_mask(nn.Module):
         #print(x1.shape)
         x=torch.cat((x,x1),1)
         x=self.regress2(x)
-        x=self.regress3(x)
-        x=self.regress4(x)
+        x_f=self.regress3(x)
+        x=self.regress4(x_f)
         x=self.final(x)
         x=self.final2(x)
+        y=self.class1(x_f)
+        y=self.class2(y)
+        y=self.class3(y)
+        y=self.class_final(y)
         #y = self.global_pooling(x2)        
-        return x
+        return x,y
 
 

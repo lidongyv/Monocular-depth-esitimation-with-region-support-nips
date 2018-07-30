@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-27 21:48:49
+# @Last Modified time: 2018-07-27 23:05:42
 
 
 import os
@@ -50,7 +50,10 @@ class NYU(data.Dataset):
             self.r=7 
         if task=='visualize':
             self.d=3
-            self.r=5      
+            self.r=5 
+        if task=='region':
+            self.d=5
+            self.r=7                  
     def __len__(self):
         """__len__"""
         return len(self.files)

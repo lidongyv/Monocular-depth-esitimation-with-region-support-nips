@@ -2,10 +2,10 @@
 # @Author: yulidong
 # @Date:   2018-03-18 15:24:33
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-05-06 14:52:11
+# @Last Modified time: 2018-07-28 14:01:50
 
 import torchvision.models as models
-
+from rsden.models.rsn_mask import *
 from rsden.models.rsn import *
 from rsden.models.rsn_v2 import *
 from rsden.models.drn import *
@@ -21,6 +21,7 @@ def _get_model_instance(name):
     try:
         return {
             'rsnet': rsn,
+            'rsn_mask': rsn_mask,
             'rsnet_v2':rsn_v2,
             'drnet':drn,
             'rsdin':rsdin,

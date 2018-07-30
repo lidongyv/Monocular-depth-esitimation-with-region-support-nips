@@ -300,8 +300,8 @@ class FRRU(nn.Module):
         y_prime = self.conv2(y_prime)
 
         x = self.conv_res(y_prime)
-        upsample_size = torch.Size([_s*self.scale for _s in y_prime.shape[-2:]])
-        x = F.upsample(x, size=upsample_size, mode='nearest',align_corners=True)
+        interpolate_size = torch.Size([_s*self.scale for _s in y_prime.shape[-2:]])
+        x = F.interpolate(x, size=interpolate_size, mode='nearest',align_corners=True)
         z_prime = z + x
 
         return y_prime, z_prime
@@ -350,18 +350,18 @@ class multiResolutionFusion(nn.Module):
             self.conv_low = nn.Conv2d(low_shape[1], channels, kernel_size=3)
 
     def forward(self, x_high, x_low):
-        high_upsampled = F.upsample(self.conv_high(x_high), 
+        high_interpolated = F.interpolate(self.conv_high(x_high), 
                                     scale_factor=self.up_scale_high, 
                                     mode='bilinear',align_corners=True)
 
         if x_low is None:
-            return high_upsampled
+            return high_interpolated
 
-        low_upsampled = F.upsample(self.conv_low(x_low),
+        low_interpolated = F.interpolate(self.conv_low(x_low),
                                    scale_factor=self.up_scale_low, 
                                    mode='bilinear',align_corners=True)
 
-        return low_upsampled + high_upsampled
+        return low_interpolated + high_interpolated
 
 class chainedResidualPooling(nn.Module):
     def __init__(self, channels, input_shape):
@@ -398,7 +398,7 @@ class pyramidPooling(nn.Module):
             out = F.adaptive_avg_pool2d(x, ((pool_size[0], pool_size[1])))
             #print(pool_size)
             out = module(out)
-            out = F.upsample(out, size=(h,w), mode='bilinear',align_corners=True)
+            out = F.interpolate(out, size=(h,w), mode='bilinear',align_corners=True)
             output_slices.append(out)
 
         return torch.cat(output_slices, dim=1)
@@ -446,7 +446,7 @@ class globalPooling(nn.Module):
         #out=self.final5(out)
         #out=self.final6(out)
         out=self.final7(out)
-        out = F.upsample(out, size=(h,w), mode='bilinear',align_corners=True)
+        out = F.interpolate(out, size=(h,w), mode='bilinear',align_corners=True)
 
 
         return out
