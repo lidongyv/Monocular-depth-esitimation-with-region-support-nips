@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-30 10:18:56
+# @Last Modified time: 2018-07-31 09:58:17
 import sys
 import torch
 import visdom
@@ -22,7 +22,7 @@ from rsden.metrics import runningScore
 from rsden.loss import *
 from rsden.augmentations import *
 import os
-
+import cv2
 
 def train(args):
 
@@ -108,7 +108,7 @@ def train(args):
     if args.resume is not None:
         if os.path.isfile(args.resume):
             print("Loading model and optimizer from checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
+            checkpoint = torch.load(args.resume,map_location='cpu')
             #model_dict=model.state_dict()  
             #opt=torch.load('/home/lidong/Documents/RSDEN/RSDEN/exp1/l2/sgd/log/83/rsnet_nyu_best_model.pkl')
             model.load_state_dict(checkpoint['model_state'])
@@ -137,7 +137,7 @@ def train(args):
 
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize from rsn!')
-        rsn=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsn_mask_nyu2_0_model.pkl')
+        rsn=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsn_mask_nyu2_best_model.pkl',map_location='cpu')
         model_dict=model.state_dict()  
         #print(model_dict)          
         pre_dict={k: v for k, v in rsn['model_state'].items() if k in model_dict and rsn['model_state'].items()}
@@ -170,20 +170,27 @@ def train(args):
             regions = Variable(regions.cuda())
             #break
             optimizer.zero_grad()
-            outputs,mask = model(images)
-            #outputs=outputs
-            loss_d = log_loss(input=outputs, target=labels)
+            #outputs,mask = model(images)
+            mask = model(images)
+            outputs=regions
+            #loss_d = region_log(outputs,labels,segments)
             segments=torch.reshape(segments,[mask.shape[0],mask.shape[2],mask.shape[3]])
             #loss_m = mask_loss(input=mask,target=segments)
-            loss_m,loss_r = mask_loss_region(mask,segments)
-
+            loss_m = mask_loss_region(mask,segments)
+            #region=segments
             #print(loss_m)
             #mask_map=torch.argmax(mask)
-            _,region= region_loss(outputs,mask,regions,segments)
+            #loss_r,region= region_loss(outputs,mask,regions,segments)
             #loss_c=loss_d
             # print('training:'+str(i)+':learning_rate'+str(loss.data.cpu().numpy()))
-            loss=0.5*loss_d+0.5*(loss_m+loss_r)
-            #loss=loss_r
+            #loss=0.5*loss_d+0.5*(loss_m+loss_r)
+            #break
+            #loss_d=loss_r
+            #loss=0.25*loss_r+0.5*loss_m+0.25*loss_d
+            loss_d=loss_m
+            loss_r=loss_m
+            region=segments
+            loss=loss_m
             loss.backward()
             optimizer.step()
             # print(torch.Tensor([loss.data[0]]).unsqueeze(0).cpu())
@@ -219,7 +226,7 @@ def train(args):
                     opts=dict(title='region!', caption='region.'),
                     win=region_window,
                 )                 
-                ground=labels.data.cpu().numpy().astype('float32')
+                ground=regions.data.cpu().numpy().astype('float32')
                 ground = ground[0, :, :]
                 ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
                 vis.image(
@@ -230,14 +237,17 @@ def train(args):
             
             loss_rec.append([i+epoch*179,torch.Tensor([loss.item()]).unsqueeze(0).cpu()])
             print("data [%d/179/%d/%d] Loss: %.4f Lossd: %.4f Lossm: %.4f Lossr: %.4f" % (i, epoch, args.n_epoch,loss.item(),loss_d.item(),loss_m.item(),loss_r.item()))
-        if epoch>40:
-            check=3
-        else:
+        if epoch>30:
             check=5
-        if epoch>60:
+        else:
+            check=10
+        if epoch>50:
+            check=3
+        if epoch>70:
             check=1   
         #epoch=3          
-        if epoch%check==0:    
+        if epoch%check==0:
+                
             print('testing!')
             model.eval()
             loss_ave=[]
@@ -249,16 +259,17 @@ def train(args):
                 segments_val = Variable(segments.cuda(), requires_grad=False)
                 regions_val = Variable(regions.cuda(), requires_grad=False)
                 with torch.no_grad():
-                    outputs,mask = model(images_val)
-                    #print(mask.shape)
-                    #loss_d = loss_fn(input=outputs, target=labels_val)
-                    #segments_val=torch.reshape(segments_val,[mask.shape[0],mask.shape[2],mask.shape[3]])
-                    #loss_c = mask_loss(input=mask,target=segments_val)
-                    _,region= mask_depth_loss(outputs,mask,regions_val,segments_val)
-                    loss_d = log_loss(input=region, target=regions_val)
-                    loss_ave.append(loss_d.data.cpu().numpy())
+                    #outputs,mask = model(images_val)
+                    mask = model(images_val)
+                    outputs=regions
+                    #region= region_generation(outputs,mask,regions_val,segments_val)
+                    #loss_d = l2(input=region, target=regions_val)
+                    segments_val=torch.reshape(segments_val,[mask.shape[0],mask.shape[2],mask.shape[3]])
+                    #loss_r,region= region_loss(outputs,mask,regions_val,segments_val)
+                    loss_r=mask_loss_region(mask,segments_val)
+                    loss_ave.append(loss_r.data.cpu().numpy())
                     print(loss_ave[-1])
-
+                    #exit()
             error=np.mean(loss_ave)
             #error_rate=np.mean(error_rate)
             print("error=%.4f"%(error))

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-30 22:30:01
+# @Last Modified time: 2018-07-31 10:00:53
 
 import torch
 import numpy as np
@@ -372,3 +372,5 @@ def region_r(input,target,instance):
         relation.append(loss/(torch.max(instance)))
         loss=0
     return relation
+def cluster(mask,segment):
+    return 0

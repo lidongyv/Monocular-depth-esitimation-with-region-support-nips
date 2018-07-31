@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-28 18:52:22
+# @Last Modified time: 2018-07-31 09:53:14
 
 import torch
 import numpy as np
@@ -154,21 +154,21 @@ class rsn_mask(nn.Module):
                                                  stride=2, padding=0, output_padding=1 ,bias=False)
         self.regress1 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=2, stride=1, bias=False)
-        self.regress2 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-                                                  padding=1, stride=1, bias=False)
-        self.regress3 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
+        # self.regress2 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
+        #                                           padding=1, stride=1, bias=False)
+        # self.regress3 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
+        #                                          padding=1, stride=1, bias=False)
+        # self.regress4 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
+        #                                          padding=1, stride=1, bias=False)        
+        # self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=16,
+        #                                          padding=1, stride=1, bias=False) 
+        # self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
+        #                                  padding=1, stride=1, bias=False) 
+        self.class1= conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False)
-        self.regress4 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
-                                                 padding=1, stride=1, bias=False)        
-        self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=16,
-                                                 padding=1, stride=1, bias=False) 
-        self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
-                                         padding=1, stride=1, bias=False) 
-        self.class1= conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
+        self.class2= conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=70,
                                                  padding=1, stride=1, bias=False)
-        self.class2= conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=65,
-                                                 padding=1, stride=1, bias=False)
-        self.class3= conv2DBatchNormRelu(in_channels=65, k_size=3, n_filters=65,
+        self.class3= conv2DBatchNormRelu(in_channels=70, k_size=3, n_filters=70,
                                                  padding=1, stride=1, bias=False)
         self.class_final= torch.nn.LogSoftmax(dim=1)
 
@@ -223,17 +223,17 @@ class rsn_mask(nn.Module):
         x=self.regress1(x)
         #print(x.shape)
         #print(x1.shape)
-        x=torch.cat((x,x1),1)
-        x=self.regress2(x)
-        x_f=self.regress3(x)
-        x=self.regress4(x_f)
-        x=self.final(x)
-        x=self.final2(x)
+        x_f=torch.cat((x,x1),1)
+        # x=self.regress2(x_f)
+        # x=self.regress3(x)
+        # x=self.regress4(x)
+        # x=self.final(x)
+        # x=self.final2(x)
         y=self.class1(x_f)
         y=self.class2(y)
         y=self.class3(y)
         y=self.class_final(y)
         #y = self.global_pooling(x2)        
-        return x,y
+        return y
 
 

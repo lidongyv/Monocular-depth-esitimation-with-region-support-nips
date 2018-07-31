@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-26 10:28:48
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-27 22:43:35
+# @Last Modified time: 2018-07-30 15:28:42
 import os
 import numpy as np
 import cv2
@@ -76,6 +76,8 @@ for i in range(len(filenames)):
     segments = data[:,:,4]    
     instance=seg2instance(copy.deepcopy(segments))
     variance=(np.max(depth)-np.min(depth))/10
+    print(variance)
+    exit()
     supportd=reg2supportd(copy.deepcopy(instance),copy.deepcopy(depth),variance)
     supporti=seg2instance(copy.deepcopy(supportd))
     # data=np.concatenate((data,np.reshape(instance,[instance.shape[0],instance.shape[1],1])),2)

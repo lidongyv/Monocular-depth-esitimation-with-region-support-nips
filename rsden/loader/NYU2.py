@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-28 21:41:33
+# @Last Modified time: 2018-07-30 17:21:10
 
 
 import os
@@ -73,9 +73,12 @@ class NYU2(data.Dataset):
         #dis=np.array(dis[0], dtype=np.uint8)
 
         depth = data[:,:,self.d]
+        #depth=np.load(os.path.join('/home/lidong/Documents/datasets/nyu/nyu2/all',self.files[index]))[:,:,3]
         region=data[:,:,self.r]
         region=np.reshape(region,[1,region.shape[0],region.shape[1]])
         segments = data[:,:,self.m]
+        #segments=np.load(os.path.join('/home/lidong/Documents/datasets/nyu/nyu2/all',self.files[index]))[:,:,4]
+        #print(segments.shape)
         segments=np.reshape(segments,[1,segments.shape[0],segments.shape[1]])
         if self.task=='visualize':
             rgb=img
@@ -99,9 +102,9 @@ class NYU2(data.Dataset):
         # Resize scales images from 0 to 255, thus we need
         # to divide by 255.0
         #img = torch.from_numpy(img).float()
-        depth = torch.from_numpy(depth).long()
+        depth = torch.from_numpy(depth).float()
         segments=torch.from_numpy(segments).long()
-        region=torch.from_numpy(region).long()
+        region=torch.from_numpy(region).float()
         #img = img.astype(float) / 255.0
         # NHWC -> NCHW
         #img = img.transpose(1,2,0)
