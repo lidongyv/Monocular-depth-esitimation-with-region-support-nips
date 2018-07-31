@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-07-31 20:35:41
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-31 20:36:06
+# @Last Modified time: 2018-07-31 21:23:32
 import os
 import numpy as np
 from sklearn.cluster import MeanShift, estimate_bandwidth
@@ -16,7 +16,8 @@ COLOR=[np.array([255,0,0]),
        np.array([0,125,125]),
        np.array([125,0,125]),
        np.array([50,100,50]),
-       np.array([100,50,100])]
+       np.array([100,50,100])
+       ]
 
 def cluster(prediction, bandwidth):
     ms = MeanShift(bandwidth, bin_seeding=True)
@@ -44,7 +45,7 @@ def get_instance_masks(prediction, bandwidth):
         num_clusters = min([num_clusters,8])
         for mask_id in range(num_clusters):
             ind = np.where(labels==mask_id)
-            mask[ind] = COLOR[mask_id]
+            mask[ind] = COLOR[mask_id%12]
 
 
         instance_masks.append(mask)

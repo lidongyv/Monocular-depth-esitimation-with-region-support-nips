@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-31 20:27:15
+# @Last Modified time: 2018-07-31 22:55:18
 import sys
 import torch
 import visdom
@@ -11,7 +11,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-
+from cluster_visual import *
 from torch.autograd import Variable
 from torch.utils import data
 from tqdm import tqdm
@@ -171,7 +171,7 @@ def train(args):
 
             optimizer.zero_grad()
 
-            feature,loss_var,loss_dis,loss_reg = model(images,segments)
+            depth,feature,loss_var,loss_dis,loss_reg = model(images,segments)
             #loss_var,loss_dis,loss_reg = cluster_loss(cluster,segments)
             #print(feature.shape)
             #print(loss_var.shape)
@@ -179,14 +179,30 @@ def train(args):
             loss=loss/4
             loss.backward()
             optimizer.step()
-            
+            if loss.item()<=0.1:
+                feature = feature.data.cpu().numpy().astype('float32')[0,...]
+                feature=np.reshape(feature,[1,feature.shape[0],feature.shape[1],feature.shape[2]])
+                feature=np.transpose(feature,[0,2,3,1])
+                print(feature.shape)
+                #feature = feature[0,...]
+                masks=get_instance_masks(feature, 0.7)
+                print(len(masks))
+                cluster = masks[0]
+                cluster=np.sum(cluster,axis=2)
+                cluster = (np.reshape(cluster, [480, 640]).astype('float32')-np.min(cluster))/(np.max(cluster)-np.min(cluster)+1)
+
+                vis.image(
+                    cluster,
+                    opts=dict(title='cluster!', caption='cluster.'),
+                    win=cluster_window,
+                )                
             if args.visdom:
                 vis.line(
                     X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*179,
                     Y=loss.item()*torch.ones(1).cpu(),
                     win=loss_window,
                     update='append')
-                depth = labels.numpy().astype('float32')
+                depth = depth.data.cpu().numpy().astype('float32')
                 depth = depth[0, :, :, :]
                 depth = (np.reshape(depth, [480, 640]).astype('float32')-np.min(depth))/(np.max(depth)-np.min(depth)+1)
                 vis.image(
@@ -194,14 +210,7 @@ def train(args):
                     opts=dict(title='depth!', caption='depth.'),
                     win=depth_window,
                 )
-                cluster = feature.numpy().astype('float32')
-                cluster = cluster[0,...]
-                cluster = (np.reshape(cluster, [480, 640,64]).astype('float32')-np.min(cluster))/(np.max(cluster)-np.min(cluster)+1)
-                vis.image(
-                    cluster,
-                    opts=dict(title='cluster!', caption='cluster.'),
-                    win=cluster_window,
-                )
+
                 region = regions.data.cpu().numpy().astype('float32')
                 region = region[0,...]
                 region = (np.reshape(region, [480, 640]).astype('float32')-np.min(region))/(np.max(region)-np.min(region)+1)
@@ -210,7 +219,7 @@ def train(args):
                     opts=dict(title='region!', caption='region.'),
                     win=region_window,
                 )                 
-                ground=segments.data.cpu().numpy().astype('float32')
+                ground=labels.data.cpu().numpy().astype('float32')
                 ground = ground[0, :, :]
                 ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
                 vis.image(
@@ -218,10 +227,10 @@ def train(args):
                     opts=dict(title='ground!', caption='ground.'),
                     win=ground_window,
                 )
-            loss_var,loss_dis,loss_reg 
             loss_rec.append([i+epoch*179,torch.Tensor([loss.item()]).unsqueeze(0).cpu()])
+
             print("data [%d/179/%d/%d] Loss: %.4f loss_var: %.4f loss_dis: %.4f loss_reg: %.4f" % (i, epoch, args.n_epoch,loss.item(), \
-                                                        torch.sum(loss_var).item(),torch.sum(loss_dis).item(),0.001*torch.sum(loss_reg).item()))
+                                                        torch.sum(loss_var).item()/4,torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
             
         if epoch>30:
             check=5
@@ -246,14 +255,15 @@ def train(args):
                 regions_val = Variable(regions.cuda(), requires_grad=False)
                 with torch.no_grad():
                     #outputs,cluster = model(images_val)
-                    cluster = model(images_val)
-                    #print(cluster.shape)
-                    outputs=regions
+                    depth,feature,loss_var,loss_dis,loss_reg = model(images_val,segments_val)
+                    loss=torch.sum(loss_var)+torch.sum(loss_dis)+0.001*torch.sum(loss_reg)
+                    loss=loss/4
+                    #outputs=regions
                     #region= region_generation(outputs,cluster,regions_val,segments_val)
                     #loss_d = l2(input=region, target=regions_val)
-                    segments_val=torch.reshape(segments_val,[cluster.shape[0],cluster.shape[2],cluster.shape[3]])
+                    #segments_val=torch.reshape(segments_val,[cluster.shape[0],cluster.shape[2],cluster.shape[3]])
                     #loss_r,region= region_loss(outputs,cluster,regions_val,segments_val)
-                    loss_r=cluster_loss_region(cluster,segments_val)
+                    loss_r=loss
                     loss_ave.append(loss_r.data.cpu().numpy())
                     print(loss_ave[-1])
                     #exit()
