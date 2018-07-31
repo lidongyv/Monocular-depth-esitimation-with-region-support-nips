@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-31 16:08:11
+# @Last Modified time: 2018-07-31 17:35:48
 
 import torch
 import numpy as np
@@ -97,7 +97,7 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         return out
-class rsn_mask(nn.Module):
+class rsn_cluster(nn.Module):
 
 
     def __init__(self, 
@@ -106,7 +106,7 @@ class rsn_mask(nn.Module):
                  input_size= (480, 640), 
                  version='scene'):
 
-        super(rsn_mask, self).__init__()
+        super(rsn_cluster, self).__init__()
         self.inplanes = 64
         self.block_config = rsn_specs[version]['block_config'] if version is not None else block_config
         self.n_classes = rsn_specs[version]['n_classes'] if version is not None else n_classes
@@ -166,11 +166,11 @@ class rsn_mask(nn.Module):
         #                                  padding=1, stride=1, bias=False) 
         self.class1= conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False)
-        self.class2= conv2DBatchNorm(in_channels=128, k_size=3, n_filters=70,
+        self.class2= conv2DBatchNorm(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
-        self.class3= conv2DBatchNorm(in_channels=70, k_size=3, n_filters=70,
+        self.class3= conv2DBatchNorm(in_channels=64, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
-        self.class_final= torch.nn.LogSoftmax(dim=1)
+        #self.class_final= torch.nn.LogSoftmax(dim=1)
 
 
 
@@ -232,7 +232,7 @@ class rsn_mask(nn.Module):
         y=self.class1(x_f)
         y=self.class2(y)
         y=self.class3(y)
-        y=self.class_final(y)
+        #y=self.class_final(y)
         #y = self.global_pooling(x2)        
         return y
 
