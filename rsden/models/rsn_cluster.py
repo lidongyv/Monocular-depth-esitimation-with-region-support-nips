@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-31 22:14:06
+# @Last Modified time: 2018-08-05 00:20:08
 
 import torch
 import numpy as np
@@ -34,10 +34,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
+        #self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
+        #self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
 
@@ -45,11 +45,11 @@ class BasicBlock(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        out = self.bn1(out)
+        #out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        #out = self.bn2(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)
@@ -66,12 +66,12 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        #self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        #self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
+        #self.bn3 = nn.BatchNorm2d(planes * 4)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -80,15 +80,15 @@ class Bottleneck(nn.Module):
         residual = x
 
         out = self.conv1(x)
-        out = self.bn1(out)
+        #out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.bn2(out)
+        #out = self.bn2(out)
         out = self.relu(out)
 
         out = self.conv3(out)
-        out = self.bn3(out)
+        #out = self.bn3(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)
@@ -114,17 +114,17 @@ class rsn_cluster(nn.Module):
         layers=[3, 4, 6, 3]
         block=BasicBlock
         # Encoder
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=1,
-                               bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=1, padding=5,
+                               bias=False,dilation=2)
+        #self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.full1=conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=128,
-                                                padding=2, stride=1, bias=False)
-        self.full2=conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
-                                                padding=2, stride=1, bias=False) 
+        self.full1=conv2DRelu(in_channels=64, k_size=3, n_filters=64,
+                                                padding=2, stride=1, bias=False,dilation=2)
+        self.full2=conv2DRelu(in_channels=64, k_size=3, n_filters=64,
+                                                padding=3, stride=1, bias=False,dilation=2) 
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        # self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=1)
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -141,35 +141,37 @@ class rsn_cluster(nn.Module):
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPooling(128, [[120,160],[60,80],[48,64],[24,32],[12,16],[6,8]])
+        self.pyramid_pooling = globalPooling_withoutbn(256, [[120,160],[60,80],[48,64],[24,32],[12,16],[6,8],[3,4]])
         #self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DBatchNormRelu(in_channels=254, k_size=3, n_filters=128,
+        self.deconv0 = conv2DRelu(in_channels=508, k_size=3, n_filters=256,
                                                 padding=1, stride=1, bias=False)        
-        self.deconv1 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
+        self.deconv1 = conv2DRelu(in_channels=256, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False)
-        self.deconv2 = deconv2DBatchNormRelu(in_channels=128, n_filters=128, k_size=3, 
+        self.deconv2 = deconv2DRelu(in_channels=128, n_filters=128, k_size=3, 
                                                  stride=2, padding=0, output_padding=1 ,bias=False)
-        self.regress1 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=128,
-                                                 padding=2, stride=1, bias=False)
-        self.regress2 = conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-                                                  padding=1, stride=1, bias=False)
-        self.regress3 = conv2DBatchNormRelu(in_channels=128, k_size=3, n_filters=64,
+        self.regress1 = conv2DRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False)
-        self.regress4 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=32,
+        self.regress2 = conv2DRelu(in_channels=192, k_size=3, n_filters=128,
+                                                  padding=1, stride=1, bias=False)
+        self.regress3 = conv2DRelu(in_channels=128, k_size=3, n_filters=64,
+                                                 padding=1, stride=1, bias=False)
+        self.regress4 = conv2DRelu(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False)        
-        self.final = conv2DBatchNormRelu(in_channels=32, k_size=3, n_filters=16,
+        self.final = conv2DRelu(in_channels=32, k_size=3, n_filters=16,
                                                  padding=1, stride=1, bias=False) 
         self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
                                          padding=1, stride=1, bias=False) 
-        self.class1= conv2DBatchNormRelu(in_channels=256, k_size=3, n_filters=128,
-                                                 padding=1, stride=1, bias=False)
-        self.class2= conv2DBatchNorm(in_channels=128, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False)
-        self.class3= conv2DBatchNorm(in_channels=64, k_size=3, n_filters=8,
-                                                 padding=1, stride=1, bias=False)
+        # self.class1= conv2DRelu(in_channels=256, k_size=3, n_filters=128,
+        #                                          padding=1, stride=1, bias=False)
+        # self.class2= conv2DRelu(in_channels=128, k_size=3, n_filters=64,
+        #                                          padding=1, stride=1, bias=False)
+        # self.class3= conv2DRelu(in_channels=64, k_size=3, n_filters=32,
+        #                                          padding=1, stride=1, bias=False)        
+        # self.class4= conv2DRelu(in_channels=32, k_size=3, n_filters=16,
+        #                                          padding=1, stride=1, bias=False)
         #self.class_final= torch.nn.LogSoftmax(dim=1)
 
 
@@ -180,7 +182,7 @@ class rsn_cluster(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
+                #nn.BatchNorm2d(planes * block.expansion),
             )
 
         layers = []
@@ -193,17 +195,17 @@ class rsn_cluster(nn.Module):
     def forward(self, x,segments):
         inp_shape = x.shape[2:]
         x = self.conv1(x)
-        x = self.bn1(x)
+        #x = self.bn1(x)
         x = self.relu(x)
 
 
         x = self.layer1(x)
-        x1=self.full1(x)
-        x1=self.full2(x1)
-        #print(x.shape)
+        x=self.full1(x)
+        x1=self.full2(x)
+        #print(x1.shape)
         x = self.layer2(x)
         # #print(x.shape)
-        # x = self.layer3(x)
+        x = self.layer3(x)
         #print(x.shape)
         #x = self.layer4(x)
         #print(x.shape)
@@ -229,17 +231,18 @@ class rsn_cluster(nn.Module):
         x=self.regress4(x)
         x=self.final(x)
         x=self.final2(x)
-        y=self.class1(x_f)
-        y=self.class2(y)
-        y=self.class3(y)
-        #y=self.class_final(y)
-        #y = self.global_pooling(x2)
-        loss_var,loss_dis,loss_reg = cluster_loss(y,segments)
-        loss_var=loss_var.reshape((y.shape[0],1))
-        loss_dis=loss_dis.reshape((y.shape[0],1))
-        loss_reg=loss_reg.reshape((y.shape[0],1))
+        # y=self.class1(x_f)
+        # y=self.class2(y)
+        # y=self.class3(y)
+        # y=self.class4(y)        
+
+        # loss_var,loss_dis,loss_reg = cluster_loss(y,segments)
+        # loss_var=loss_var.reshape((y.shape[0],1))
+        # loss_dis=loss_dis.reshape((y.shape[0],1))
+        # loss_reg=loss_reg.reshape((y.shape[0],1))
 
 
-        return x,y,loss_var,loss_dis,loss_reg
+        # return x,y,loss_var,loss_dis,loss_reg
+        return x
 
 

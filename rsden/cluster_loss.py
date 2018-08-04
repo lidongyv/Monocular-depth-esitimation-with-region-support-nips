@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-31 22:25:02
+# @Last Modified time: 2018-08-02 17:03:53
 
 import torch
 import numpy as np
@@ -50,8 +50,8 @@ def cluster_loss(feature,segment,lvar=0.5,dis=1.5):
     #and mean123-mean3
     left=mean.view(1,instance_num,mean.shape[1],mean.shape[2]).expand(instance_num,instance_num,mean.shape[1],mean.shape[2])
     right=mean.view(instance_num,1,mean.shape[1],mean.shape[2]).expand(instance_num,instance_num,mean.shape[1],mean.shape[2])
-    dis_map=torch.abs(left-right)
-    dis_map=torch.sum(dis_map,dim=-1)
+    dis_map=torch.norm(left-right,dim=-1)
+    #dis_map=torch.sum(dis_map,dim=-1)
     zeros=torch.zeros_like(dis_map)
     #print(dis_map.shape)
     instance_num=instance_num.float()
@@ -60,3 +60,7 @@ def cluster_loss(feature,segment,lvar=0.5,dis=1.5):
     loss_reg=torch.mean(torch.norm(mean,dim=-1))
     #exit()
     return loss_var,loss_dis,loss_reg
+    #add the geometrical distance loss
+    #two channel of the postion of pixels
+    #x=torch.arange(0,feature.shape[2])
+    #y=torch.arange(0,feature.shape[3])
