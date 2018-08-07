@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-07 10:58:17
+# @Last Modified time: 2018-08-07 19:41:03
 import sys
 import torch
 import visdom
@@ -149,7 +149,7 @@ def train(args):
         best_error=100
         best_error_r=100
         trained=0
-        #print('random initialize')
+        print('random initialize')
         
         print("No checkpoint found at '{}'".format(args.resume))
         print('Initialize from rsn!')
@@ -178,7 +178,7 @@ def train(args):
         print(best_error)
         print(trained)
         print(best_error_r)
-        #del rsn
+        del rsn
         test=0
         #exit()
         
@@ -190,6 +190,7 @@ def train(args):
         #trained
         print('training!')
         model.train()
+        """
         for i, (images, labels,regions,segments) in enumerate(trainloader):
             #break
             images = Variable(images.cuda())
@@ -201,6 +202,7 @@ def train(args):
 
             #depth,feature,loss_var,loss_dis,loss_reg = model(images,segments)
             feature,loss_var,loss_dis,loss_reg = model(images,segments)
+            
             #loss_d=berhu(depth,labels)
             loss=torch.sum(loss_var)+torch.sum(loss_dis)+0.001*torch.sum(loss_reg)
             # loss=loss/4+loss_d
@@ -211,61 +213,47 @@ def train(args):
             # loss=loss_d
             loss.backward()
             optimizer.step()
-            if loss.item()<=0.000001:
-                feature = feature.data.cpu().numpy().astype('float32')[0,...]
-                feature=np.reshape(feature,[1,feature.shape[0],feature.shape[1],feature.shape[2]])
-                feature=np.transpose(feature,[0,2,3,1])
-                print(feature.shape)
-                #feature = feature[0,...]
-                masks=get_instance_masks(feature, 0.7)
-                print(masks.shape)
-                #cluster = masks[0]
-                cluster=np.sum(masks,axis=0)
-                cluster = (np.reshape(cluster, [480, 640]).astype('float32')-np.min(cluster))/(np.max(cluster)-np.min(cluster)+1)
-
-                vis.image(
-                    cluster,
-                    opts=dict(title='cluster!', caption='cluster.'),
-                    win=cluster_window,
-                )                
+            
             if args.visdom:
-                vis.line(
-                    X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*179,
-                    Y=loss.item()*torch.ones(1).cpu(),
-                    win=loss_window,
-                    update='append')
-                depth = segments.data.cpu().numpy().astype('float32')
-                depth = depth[0, :, :, :]
-                depth = (np.reshape(depth, [480, 640]).astype('float32')-np.min(depth))/(np.max(depth)-np.min(depth)+1)
-                vis.image(
-                    depth,
-                    opts=dict(title='depth!', caption='depth.'),
-                    win=depth_window,
-                )
+                with torch.no_grad():
+   
+                    vis.line(
+                        X=torch.ones(1).cpu() * i+torch.ones(1).cpu() *(epoch-trained)*179,
+                        Y=loss.item()*torch.ones(1).cpu(),
+                        win=loss_window,
+                        update='append')
+                    depth = segments.data.cpu().numpy().astype('float32')
+                    depth = depth[0, :, :, :]
+                    depth = (np.reshape(depth, [480, 640]).astype('float32')-np.min(depth))/(np.max(depth)-np.min(depth)+1)
+                    vis.image(
+                        depth,
+                        opts=dict(title='depth!', caption='depth.'),
+                        win=depth_window,
+                    )
 
-                region = regions.data.cpu().numpy().astype('float32')
-                region = region[0,...]
-                region = (np.reshape(region, [480, 640]).astype('float32')-np.min(region))/(np.max(region)-np.min(region)+1)
-                vis.image(
-                    region,
-                    opts=dict(title='region!', caption='region.'),
-                    win=region_window,
-                )                 
-                ground=labels.data.cpu().numpy().astype('float32')
-                ground = ground[0, :, :]
-                ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
-                vis.image(
-                    ground,
-                    opts=dict(title='ground!', caption='ground.'),
-                    win=ground_window,
-                )
+                    region = regions.data.cpu().numpy().astype('float32')
+                    region = region[0,...]
+                    region = (np.reshape(region, [480, 640]).astype('float32')-np.min(region))/(np.max(region)-np.min(region)+1)
+                    vis.image(
+                        region,
+                        opts=dict(title='region!', caption='region.'),
+                        win=region_window,
+                    )                 
+                    ground=labels.data.cpu().numpy().astype('float32')
+                    ground = ground[0, :, :]
+                    ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
+                    vis.image(
+                        ground,
+                        opts=dict(title='ground!', caption='ground.'),
+                        win=ground_window,
+                    )
             loss_rec.append([i+epoch*179,torch.Tensor([loss.item()]).unsqueeze(0).cpu()])
 
             print("data [%d/179/%d/%d] Loss: %.4f loss_var: %.4f loss_dis: %.4f loss_reg: %.4f " % (i, epoch, args.n_epoch,loss.item(), \
                                 torch.sum(loss_var).item()/4,torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
             # print("data [%d/179/%d/%d] Loss: %.4f linear: %.4f " % (i, epoch, args.n_epoch,loss.item(),lin.item()
             #                    ))
-           
+        """
         if epoch>30:
             check=3
         else:
@@ -309,6 +297,18 @@ def train(args):
                                 torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
                     #print(loss_d_ave[-1])
                     #print(loss_lin_ave[-1])
+                    feature=feature[0,...].view([1,feature.shape[1],feature.shape[2],feature.shape[3]])
+                    print(feature.shape)
+                    masks,counts,areas=fast_cluster(feature)
+                    areas = areas.data.cpu().numpy().astype('float32')[0,...]
+                    print(areas.shape)
+                    areas=np.reshape(areas,[1,areas.shape[-2],areas.shape[-1]])
+
+                    vis.image(
+                        areas,
+                        opts=dict(title='cluster!', caption='cluster.'),
+                        win=cluster_window,
+                    ) 
                 if args.visdom:
                     vis.line(
                         X=torch.ones(1).cpu() * i_val+torch.ones(1).cpu() *test*183,

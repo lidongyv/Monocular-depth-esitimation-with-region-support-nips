@@ -2,13 +2,13 @@
 # @Author: yulidong
 # @Date:   2018-07-31 20:35:41
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-03 22:00:32
+# @Last Modified time: 2018-08-07 20:27:34
 import os
 import numpy as np
 from sklearn.cluster import MeanShift, estimate_bandwidth
 import time
 import cv2
-
+import torch
 COLOR=[np.array([255,0,0]), 
        np.array([0,255,0]),
        np.array([0,0,255]),
@@ -75,65 +75,87 @@ def save_instance_masks(prediction,output_dir, bandwidth, count):
         instance_masks.append(mask)
 
     return instance_masks
+
 def mean_shift(feature,mean,bandwidth):
     #feature shape c h w
     dis=feature-mean
     dis=torch.norm(dis,dim=0)
-    mask=torch.where(dis<bandwidth,torch.tensor(1),torch.tensor(0)).float()
+    mask=torch.where(dis<bandwidth,torch.tensor(1).cuda(),torch.tensor(0).cuda()).float()
     mean=torch.sum((feature*mask).view(feature.shape[0],feature.shape[1]*feature.shape[2]),dim=1)/torch.sum(mask)
     return mean
 def get_mask(feature,mean,bandwidth):
+    mean=mean.view([mean.shape[0],1,1])
     dis=feature-mean
     dis=torch.norm(dis,dim=0)
-    mask=torch.where(dis<bandwidth,torch.tensor(1),torch.tensor(0).float())
+    mask=torch.where(dis<bandwidth,torch.tensor(1).cuda(),torch.tensor(0).cuda())
     pixels=mask.nonzero()
-    minx=torch.min(pixels[0,:])
-    maxx=torch.max(pixels[0,:])
-    miny=torch.min(pixels[1,:])
-    maxy=torch.max(pixels[1,:])
-    areas=torch.ceil((maxx-minx)/60)*torch.ceil((maxy-miny)/60)
-    small=[]
-    for i in range(1,torch.ceil((maxx-minx)/60).int()+1):
-        for j in range(1,torch.ceil((maxy-miny)/60)+1):
-            mask[minx+60*(i-1):minx+60*i,miny+60*(j-1):miny+60*j]*=i*j
+    print(torch.sum(mask))
+    if torch.sum(mask)<400:
+        return mask.float(),torch.tensor(0).float().cuda()
+    minx=torch.min(pixels[:,0])
+    maxx=torch.max(pixels[:,0])
+    miny=torch.min(pixels[:,1])
+    maxy=torch.max(pixels[:,1])
+    #areas=torch.ceil((maxx-minx).float()/60)*torch.ceil((maxy-miny).float()/60)
+    for i in range(1,torch.ceil((maxx-minx).float()/60).int()+1):
+        for j in range(1,torch.ceil((maxy-miny).float()/60).int()+1):
+            if torch.sum(mask[minx+60*(i-1):minx+60*i,miny+60*(j-1):miny+60*j])>400:
+                mask[minx+60*(i-1):minx+60*i,miny+60*(j-1):miny+60*j]*=i*j
+            else:
+                mask[minx+60*(i-1):minx+60*i,miny+60*(j-1):miny+60*j]*=0
     areas=torch.unique(mask).sort()[0]
-    for i in range(1,len(unique)+1):
-        torch.where(mask==areas[i],-i,mask)
+    print(areas)
+    if len(areas)==1:
+        mask=torch.where(dis<bandwidth,torch.tensor(1).cuda(),torch.tensor(0).cuda())
+        return mask.float(),torch.tensor(0).float().cuda()
+    for i in range(1,len(areas)):
+        mask=torch.where(mask==areas[i],-torch.tensor(i).cuda(),mask)
     mask=-mask
     areas=len(areas)-1
-    return mask,areas
+    #print(torch.sum(mask))
+    return mask.float(),torch.tensor(areas).float().cuda()
 
 def re_label(mask,area,bandwidth):
     index=torch.sum(area)
-    count=0
+    print(index)
+    count=torch.tensor(0).float().cuda()
     for i in range(area.shape[0]):
         mask[i,:,:]=torch.where(mask[i,:,:]>0,mask[i,:,:]+count,mask[i,:,:])
         count+=area[i]
-    segment=torch.where(mask>0,torch.tensor(1),torch.tensor(0).float())
+    segment=torch.where(mask>0,torch.tensor(1).cuda(),torch.tensor(0).cuda()).float()
     final=torch.sum(mask,dim=0)/torch.sum(segment,dim=0)
-    return mask,count,segment
-def fast_cluster(feature,label,bandwidth=0.7):
+    final=torch.squeeze(final)
+    final=final/torch.max(final)
+    return mask,area,final
+def fast_cluster(feature,bandwidth=0.7):
     masks=[]
     areas=[]
+    segments=[]
     for i in range(feature.shape[0]):
         n_feature=feature[i,...]
-        label=torch.zeros(n_feature.shape[1],n_feature.shape[2])
+        label=torch.zeros(n_feature.shape[1],n_feature.shape[2]).cuda().float()
         n_masks=[]
         n_areas=[]
-        while(torch.min(labels)==0):
-            candidate=torch.where(labels==0,torch.tensor(1).float().cuda(),torch.tensor(0).float().cuda()).nonzero()
-            seed=torch.randint(len(candidate),(1,))[0]
-            mean=feature[:,candidate[seed][0],candidate[seed][1]].view(n_feature.shape[0],1,1)
+        while(torch.min(label)==0):
+            candidate=torch.where(label==0,torch.tensor(1).float().cuda(),torch.tensor(0).float().cuda()).nonzero()
+            print(len(candidate))
+            if len(candidate)<10000:
+                break
+            seed=torch.randint(len(candidate),(1,))[0].long()
+            mean=n_feature[:,candidate[seed][0].long(),candidate[seed][1].long()].view(n_feature.shape[0],1,1)
             mean=mean_shift(n_feature, mean, bandwidth)
-            n_masks,n_areas=get_mask(feature, mean, bandwidth)
-            n_masks.append(n_masks)
-            n_areas.append(n_areas)
-            label+=n_masks
-        masks.append(torch.stack(n_masks))
-        areas.append(torch.stack(n_areas))
+            t_masks,t_areas=get_mask(n_feature, mean, bandwidth)
+            print(torch.sum(t_masks))
+            label=label+t_masks
+            print(torch.sum(label))
+            if t_areas>0:
+                n_masks.append(t_masks)
+                n_areas.append(t_areas)
+        mask,count,region=re_label(torch.stack(n_masks),torch.stack(n_areas),bandwidth=0.7)
+        masks.append(mask)
+        areas.append(count)
+        segments.append(region)
     masks=torch.stack(masks)
     areas=torch.stack(areas)
-    mask,count,regions=relable(masks,areas)
-    return mask,count,regions
-    #x=torch.arange(0,feature.shape[2])
-    #y=torch.arange(0,feature.shape[3])
+    segments=torch.stack(segments)
+    return masks,areas,segments

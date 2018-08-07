@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-07 14:41:27
+# @Last Modified time: 2018-08-07 19:32:02
 
 import torch
 import numpy as np
@@ -147,9 +147,9 @@ class rsn_cluster(nn.Module):
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=256,
+        self.deconv0 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                 padding=1, stride=1, bias=False,group_dim=group_dim)        
-        self.deconv1 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=128,
+        self.deconv1 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
         self.deconv2 = deconv2DGroupNormRelu(in_channels=128, n_filters=128, k_size=3, 
                                                  stride=2, padding=0, output_padding=1 ,bias=False,group_dim=group_dim)
@@ -159,23 +159,23 @@ class rsn_cluster(nn.Module):
         #                                           padding=1, stride=1, bias=False)
         # self.regress3 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
         #                                          padding=1, stride=1, bias=False)
-        # self.regress4 = conv2DGroupNormRelu(in_channels=64, k_size=3, n_filters=32,
+        # self.regress4 = conv2DRelu(in_channels=64, k_size=3, n_filters=32,
         #                                          padding=1, stride=1, bias=False)        
-        # self.final = conv2DGroupNormRelu(in_channels=32, k_size=3, n_filters=16,
+        # self.final = conv2DRelu(in_channels=32, k_size=3, n_filters=16,
         #                                          padding=1, stride=1, bias=False) 
         # self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
         #                                  padding=1, stride=1, bias=False) 
         self.class1= conv2DGroupNormRelu(in_channels=192, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
+        self.class2= conv2DGroupNorm(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False,group_dim=64)
-        self.class3= conv2DGroupNormRelu(in_channels=64, k_size=3, n_filters=32,
+        self.class3= conv2DGroupNorm(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False,group_dim=32)        
-        self.class4= conv2D(in_channels=32, k_size=3, n_filters=16,
-                                                 padding=1, stride=1, bias=False)
-
-        self.class5= conv2D(in_channels=16, k_size=3, n_filters=8,
-                                                 padding=1, stride=1, bias=False)
+        self.class4= conv2DGroupNorm(in_channels=32, k_size=3, n_filters=16,
+                                                 padding=1, stride=1, bias=False,group_dim=16)
+        self.class5= conv2DGroupNorm(in_channels=16, k_size=3, n_filters=8,
+                                                 padding=1, stride=1, bias=False,group_dim=8)
+        # self.class5=nn.GroupNorm(1,16)
 
 
     def _make_layer(self, block, planes, blocks, stride=1):
