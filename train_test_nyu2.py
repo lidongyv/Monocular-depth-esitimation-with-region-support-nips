@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 19:03:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-04 17:18:44
+# @Last Modified time: 2018-08-06 13:13:55
 import scipy.io
 import numpy as np
 import os
@@ -22,7 +22,8 @@ for i in range(len(scenes)):
     if not scenes[i] in test_scenes and not scenes[i] in train_scenes:
         train_scenes.append(scenes[i])
 train_scenes.sort()
+test_scenes.sort()
 np.save('/home/lidong/Documents/datasets/nyu/train_scenes.npy',train_scenes)
 print(len(test_scenes))
-print(train_scenes)
-print(len(test1))
+print(len(train_scenes))
+print(len(test_scenes))
