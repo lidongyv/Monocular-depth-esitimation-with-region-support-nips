@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-03 15:32:11
+# @Last Modified time: 2018-08-07 22:36:47
 
 import torch
 import numpy as np
@@ -162,7 +162,7 @@ def mask_loss_region(mask,segment):
         mask_r_o=torch.where(segment==i,ones,zeros)
         mask_o=mask_map_v-mask_r
         mask_o_o=ones-mask_r_o
-        value=torch.bincount(torch.reshape(mask_r,(torch.sum(ones),)).int(),minlength=1)
+        value=torch.bincount(torch.reshape(mask_r,(torch.sum(ones),)).int())[1:]
         mean=torch.argmax(value).float()+1
         mask_p=torch.exp(mask[:,mean.long(),:,:])
         #print(torch.max(mask_p))

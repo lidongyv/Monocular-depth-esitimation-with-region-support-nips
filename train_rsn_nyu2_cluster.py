@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-07 19:41:03
+# @Last Modified time: 2018-08-07 21:16:48
 import sys
 import torch
 import visdom
@@ -190,7 +190,7 @@ def train(args):
         #trained
         print('training!')
         model.train()
-        """
+        
         for i, (images, labels,regions,segments) in enumerate(trainloader):
             #break
             images = Variable(images.cuda())
@@ -253,7 +253,7 @@ def train(args):
                                 torch.sum(loss_var).item()/4,torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
             # print("data [%d/179/%d/%d] Loss: %.4f linear: %.4f " % (i, epoch, args.n_epoch,loss.item(),lin.item()
             #                    ))
-        """
+        
         if epoch>30:
             check=3
         else:
@@ -297,18 +297,19 @@ def train(args):
                                 torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
                     #print(loss_d_ave[-1])
                     #print(loss_lin_ave[-1])
-                    feature=feature[0,...].view([1,feature.shape[1],feature.shape[2],feature.shape[3]])
-                    print(feature.shape)
-                    masks,counts,areas=fast_cluster(feature)
-                    areas = areas.data.cpu().numpy().astype('float32')[0,...]
-                    print(areas.shape)
-                    areas=np.reshape(areas,[1,areas.shape[-2],areas.shape[-1]])
+                    # feature=feature[0,...].view([1,feature.shape[1],feature.shape[2],feature.shape[3]])
+                    # print(feature.shape)
+                    # masks,counts,areas=fast_cluster(feature)
+                    # areas = areas.data.cpu().numpy().astype('float32')[0,...]
+                    # #print(areas.shape)
+                    # areas=np.reshape(areas,[1,areas.shape[-2],areas.shape[-1]])
 
-                    vis.image(
-                        areas,
-                        opts=dict(title='cluster!', caption='cluster.'),
-                        win=cluster_window,
-                    ) 
+                    # vis.image(
+                    #     areas,
+                    #     opts=dict(title='cluster!', caption='cluster.'),
+                    #     win=cluster_window,
+                    # ) 
+                    # exit()
                 if args.visdom:
                     vis.line(
                         X=torch.ones(1).cpu() * i_val+torch.ones(1).cpu() *test*183,
