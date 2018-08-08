@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-08 11:34:45
+# @Last Modified time: 2018-08-08 12:08:12
 
 import torch
 import numpy as np
@@ -165,18 +165,26 @@ class rsn_cluster(nn.Module):
         #                                          padding=1, stride=1, bias=False) 
         # self.final2 = conv2DRelu(in_channels=16, k_size=3, n_filters=1,
         #                                  padding=1, stride=1, bias=False) 
-        self.class1= conv2DRelu(in_channels=192, k_size=3, n_filters=128,
+        self.class1= conv2DGroupNormRelu(in_channels=192, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.class2= conv2DRelu(in_channels=128, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False,group_dim=64)
-        self.class3= conv2DRelu(in_channels=64, k_size=3, n_filters=32,
-                                                 padding=1, stride=1, bias=False,group_dim=32)        
-        self.class4= conv2D(in_channels=32, k_size=3, n_filters=16,
-                                                 padding=1, stride=1, bias=False,group_dim=16)
-        self.class5= conv2D(in_channels=16, k_size=3, n_filters=8,
-                                                 padding=1, stride=1, bias=False,group_dim=8)
+        self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
+                                                 padding=1, stride=1, bias=False,group_dim=1)
+        self.class3= conv2DGroupNormRelu(in_channels=64, k_size=3, n_filters=32,
+                                                 padding=1, stride=1, bias=False,group_dim=1)        
+        self.class4= conv2DGroupNorm(in_channels=32, k_size=3, n_filters=16,
+                                                 padding=1, stride=1, bias=False,group_dim=1)
+        self.class5= conv2DGroupNorm(in_channels=16, k_size=3, n_filters=8,
+                                                 padding=1, stride=1, bias=False,group_dim=1)
         # self.class5=nn.GroupNorm(1,16)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.GroupNorm):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
 
+                
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
