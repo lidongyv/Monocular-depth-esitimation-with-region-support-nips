@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-08 12:50:03
+# @Last Modified time: 2018-08-08 13:56:51
 
 import torch
 import numpy as np
@@ -167,14 +167,14 @@ class rsn_cluster(nn.Module):
         #                                  padding=1, stride=1, bias=False) 
         self.class1= conv2DGroupNormRelu(in_channels=192, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.class2= conv2DGroupNorm(in_channels=128, k_size=3, n_filters=64,
+        self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False,group_dim=64)
         self.class3= conv2DGroupNorm(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False,group_dim=32)        
-        self.class4= conv2D(in_channels=32, k_size=3, n_filters=16,
-                                                 padding=1, stride=1, bias=False,group_dim=16)
-        self.class5= conv2D(in_channels=16, k_size=1, n_filters=8,
-                                                 padding=0, stride=1, bias=False,group_dim=8)
+        self.class4= conv2DGroupNorm(in_channels=32, k_size=1, n_filters=16,
+                                                 padding=0, stride=1, bias=False,group_dim=16)
+        # self.class5= conv2DGroupNorm(in_channels=16, k_size=1, n_filters=8,
+        #                                          padding=0, stride=1, bias=False,group_dim=8)
         # self.class5=nn.GroupNorm(1,16)
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -245,7 +245,7 @@ class rsn_cluster(nn.Module):
         y=self.class2(y)
         y=self.class3(y)
         y=self.class4(y)
-        y=self.class5(y)
+        #y=self.class5(y)
         loss_var,loss_dis,loss_reg = cluster_loss(y,segments)
         loss_var=loss_var.reshape((y.shape[0],1))
         loss_dis=loss_dis.reshape((y.shape[0],1))

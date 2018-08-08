@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-08 11:44:29
+# @Last Modified time: 2018-08-08 14:02:30
 import sys
 import torch
 import visdom
@@ -151,34 +151,34 @@ def train(args):
         trained=0
         print('random initialize')
         
-        # print("No checkpoint found at '{}'".format(args.resume))
-        # print('Initialize from rsn!')
-        # rsn=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsn_cluster_nyu2_best_model.pkl',map_location='cpu')
-        # model_dict=model.state_dict()  
-        # #print(model_dict)          
-        # #pre_dict={k: v for k, v in rsn['model_state'].items() if k in model_dict and rsn['model_state'].items()}
-        # pre_dict={k: v for k, v in rsn['model_state'].items() if k in model_dict and rsn['model_state'].items()}
-        # #print(pre_dict)
-        # key=[]
-        # for k,v in pre_dict.items():
-        #     if v.shape!=model_dict[k].shape:
-        #         key.append(k)
-        # for k in key:
-        #     pre_dict.pop(k)
-        # #print(pre_dict)
-        # model_dict.update(pre_dict)
-        # model.load_state_dict(model_dict)
-        # #optimizer.load_state_dict(rsn['optimizer_state'])
-        # #trained=rsn['epoch']
-        # best_error_r=rsn['error_r']
-        # #best_error_d=checkpoint['error_d']
-        # best_error_d=rsn['error']
-        # best_error=best_error_d
-        # print('load success!')
-        # print(best_error)
-        # print(trained)
-        # print(best_error_r)
-        # del rsn
+        print("No checkpoint found at '{}'".format(args.resume))
+        print('Initialize from rsn!')
+        rsn=torch.load('/home/lidong/Documents/RSDEN/RSDEN/rsn_cluster_nyu2_best_model.pkl',map_location='cpu')
+        model_dict=model.state_dict()  
+        #print(model_dict)          
+        #pre_dict={k: v for k, v in rsn['model_state'].items() if k in model_dict and rsn['model_state'].items()}
+        pre_dict={k: v for k, v in rsn['model_state'].items() if k in model_dict and rsn['model_state'].items()}
+        #print(pre_dict)
+        key=[]
+        for k,v in pre_dict.items():
+            if v.shape!=model_dict[k].shape:
+                key.append(k)
+        for k in key:
+            pre_dict.pop(k)
+        #print(pre_dict)
+        model_dict.update(pre_dict)
+        model.load_state_dict(model_dict)
+        optimizer.load_state_dict(rsn['optimizer_state'])
+        trained=rsn['epoch']
+        best_error_r=rsn['error_r']
+        #best_error_d=checkpoint['error_d']
+        best_error_d=rsn['error']
+        best_error=best_error_d
+        print('load success!')
+        print(best_error)
+        print(trained)
+        print(best_error_r)
+        del rsn
         test=0
         #exit()
         
