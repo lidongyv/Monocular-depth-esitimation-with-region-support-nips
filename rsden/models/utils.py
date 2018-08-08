@@ -135,7 +135,7 @@ class conv2D(nn.Module):
         outputs = self.cbr_unit(inputs)
         return outputs
 class conv2DRelu(nn.Module):
-    def __init__(self, in_channels, n_filters, k_size,  stride, padding=0, bias=True, dilation=1):
+    def __init__(self, in_channels, n_filters, k_size,  stride, padding=0, bias=True, dilation=1,group_dim=group_dim):
         super(conv2DRelu, self).__init__()
 
         if dilation > 1:
