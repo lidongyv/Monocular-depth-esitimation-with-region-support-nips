@@ -164,6 +164,21 @@ class deconv2DBatchNormRelu(nn.Module):
     def forward(self, inputs):
         outputs = self.dcbr_unit(inputs)
         return outputs
+class up2DGroupNormRelu(nn.Module):
+    def __init__(self, in_channels, n_filters, k_size, stride,output_padding=0, padding=0, bias=True,group_dim=group_dim):
+        super(up2DGroupNormRelu, self).__init__()
+
+        self.dcbr_unit = nn.Sequential(conv2DGroupNormRelu(int(in_channels), int(n_filters), k_size=k_size,
+                                                padding=padding, stride=stride, bias=bias),
+                                 nn.GroupNorm(group_dim,int(n_filters)),
+                                 nn.ReLU(inplace=True),)
+
+    def forward(self, inputs):
+        h, w = inputs.shape[-2:]
+        #print(h,w)
+        inputs=F.interpolate(inputs, size=(h*2,w*2), mode='bilinear',align_corners=True)
+        outputs = self.dcbr_unit(inputs)
+        return outputs
 class deconv2DGroupNormRelu(nn.Module):
     def __init__(self, in_channels, n_filters, k_size, stride,output_padding=0, padding=0, bias=True,group_dim=group_dim):
         super(deconv2DGroupNormRelu, self).__init__()
@@ -192,7 +207,7 @@ class deconv2DRelu(nn.Module):
 
 class pyramidPoolingGroupNorm(nn.Module):
 
-    def __init__(self, in_channels, pool_sizes,group_dim=group_dim):
+    def __init__(self, in_channels, pool_sizes,group_dim):
         super(pyramidPoolingGroupNorm, self).__init__()
 
         self.paths = []

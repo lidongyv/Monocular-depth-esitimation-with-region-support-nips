@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-13 16:31:03
+# @Last Modified time: 2018-08-11 15:44:03
 
 import torch
 import numpy as np
@@ -22,16 +22,12 @@ rsn_specs = {
     },
 
 }
-group_dim=16
+group_dim=32
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
-
-    if stride==1:
-        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
-    if stride==2:
-        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=2, bias=False)       
+
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -58,8 +54,7 @@ class BasicBlock(nn.Module):
 
         if self.downsample is not None:
             residual = self.downsample(x)
-            # print(residual.shape)
-            # print(out.shape)
+
         out += residual
         out = self.relu(out)
 
@@ -99,7 +94,6 @@ class Bottleneck(nn.Module):
         if self.downsample is not None:
             residual = self.downsample(x)
 
-
         out += residual
         out = self.relu(out)
 
@@ -133,24 +127,32 @@ class rsn_cluster(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 128, layers[2], stride=1)
         # self.layer4 = self._make_layer(block, 512, layers[3], stride=1)
-        self.layer4 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=256,
-                                                padding=1, stride=1, bias=False,group_dim=group_dim)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.GroupNorm):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+        # Vanilla Residual Blocks
+            
 
 
         # Pyramid Pooling Module
         #we need to modify the padding to keep the diminsion
         #remove 1 ,because the error of bn
-        self.pyramid_pooling = pyramidPoolingGroupNorm(256, [[120,160],[60,80],[48,64],[30,40],[24,32],[12,16],[6,8],[3,4]],group_dim=group_dim)
+        self.pyramid_pooling = pyramidPoolingGroupNorm(128, [[120,160],[60,80],[48,64],[30,40],[24,32],[12,16],[6,8],[3,4]],group_dim=2)
         #self.global_pooling = globalPooling(256, 1)
         # Final conv layers
         #self.cbr_final = conv2DBatchNormRelu(512, 256, 3, 1, 1, False)
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
-        self.deconv0 = conv2DGroupNormRelu(in_channels=512, k_size=3, n_filters=256,
+        self.deconv0 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=128,
                                                 padding=1, stride=1, bias=False,group_dim=group_dim)        
-        # self.deconv1 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=256,
-        #                                          padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.deconv2 = up2DGroupNormRelu(in_channels=256, n_filters=128, k_size=3, 
-                                                 stride=1, padding=1, bias=False,group_dim=group_dim)
+        self.deconv1 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=128,
+                                                 padding=1, stride=1, bias=False,group_dim=group_dim)
+        self.deconv2 = deconv2DGroupNormRelu(in_channels=128, n_filters=128, k_size=3, 
+                                                 stride=2, padding=0, output_padding=1 ,bias=False,group_dim=group_dim)
         self.regress1 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
         # self.regress2 = conv2DGroupNormRelu(in_channels=192, k_size=3, n_filters=128,
@@ -165,10 +167,10 @@ class rsn_cluster(nn.Module):
         #                                  padding=1, stride=1, bias=False) 
         self.class1= conv2DGroupNormRelu(in_channels=192, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
-                                                 padding=1, stride=1, bias=False,group_dim=group_dim)
+        self.class2= conv2D(in_channels=128, k_size=3, n_filters=64,
+                                                 padding=1, stride=1, bias=False,group_dim=64)
         self.class3= conv2D(in_channels=64, k_size=3, n_filters=32,
-                                                 padding=1, stride=1, bias=False,group_dim=16)        
+                                                 padding=1, stride=1, bias=False,group_dim=32)        
         self.class4= conv2D(in_channels=32, k_size=3, n_filters=16,
                                                  padding=1, stride=1, bias=False,group_dim=16)
         # self.class5= conv2DGroupNorm(in_channels=16, k_size=1, n_filters=8,
@@ -181,6 +183,7 @@ class rsn_cluster(nn.Module):
             elif isinstance(m, nn.GroupNorm):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
                 
 
     def _make_layer(self, block, planes, blocks, stride=1):
@@ -188,7 +191,7 @@ class rsn_cluster(nn.Module):
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False,padding=1),
+                          kernel_size=1, stride=stride, bias=False),
                 nn.GroupNorm(group_dim,planes * block.expansion),
             )
 
@@ -211,10 +214,10 @@ class rsn_cluster(nn.Module):
         x1=self.full2(x)
         #print(x1.shape)
         x = self.layer2(x)
+        # #print(x.shape)
+        x = self.layer3(x)
         #print(x.shape)
-        #x = self.layer3(x)
-        #print(x.shape)
-        x = self.layer4(x)
+        #x = self.layer4(x)
         #print(x.shape)
         # H, W -> H/2, W/2 
         x = self.pyramid_pooling(x)
@@ -223,7 +226,7 @@ class rsn_cluster(nn.Module):
         #x = self.dropout(x)
         x = self.deconv0(x)
      
-        # x = self.deconv1(x)
+        x = self.deconv1(x)
        
         x = self.deconv2(x)
        

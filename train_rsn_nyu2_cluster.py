@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-08 14:02:30
+# @Last Modified time: 2018-08-11 13:16:40
 import sys
 import torch
 import visdom
@@ -99,10 +99,10 @@ def train(args):
     if hasattr(model.module, 'optimizer'):
         optimizer = model.module.optimizer
     else:
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
-        # optimizer = torch.optim.SGD(
-        #     model.parameters(), lr=args.l_rate,momentum=0.90, weight_decay=5e-4)
+        # optimizer = torch.optim.Adam(
+        #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=args.l_rate,momentum=0.90, weight_decay=5e-4)
     if hasattr(model.module, 'loss'):
         print('Using custom loss')
         loss_fn = model.module.loss
@@ -168,11 +168,11 @@ def train(args):
         #print(pre_dict)
         model_dict.update(pre_dict)
         model.load_state_dict(model_dict)
-        optimizer.load_state_dict(rsn['optimizer_state'])
+        #optimizer.load_state_dict(rsn['optimizer_state'])
         trained=rsn['epoch']
-        best_error_r=rsn['error_r']
+        best_error_r=rsn['error_r']+0.1
         #best_error_d=checkpoint['error_d']
-        best_error_d=rsn['error']
+        best_error_d=rsn['error']+0.1
         best_error=best_error_d
         print('load success!')
         print(best_error)
@@ -180,6 +180,7 @@ def train(args):
         print(best_error_r)
         del rsn
         test=0
+        trained=0
         #exit()
         
 
@@ -206,7 +207,7 @@ def train(args):
             #loss_d=berhu(depth,labels)
             loss=torch.sum(loss_var)+torch.sum(loss_dis)+0.001*torch.sum(loss_reg)
             # loss=loss/4+loss_d
-            loss/=4
+            loss/=feature.shape[0]
             # depth = model(images,segments)
             # loss_d=berhu(depth,labels)
             # lin=l2(depth,labels)
@@ -374,7 +375,7 @@ def train(args):
             #         args.arch, args.dataset))
             #     print('save success')
             # np.save('/home/lidong/Documents/RSDEN/RSDEN/loss.npy',loss_rec)
-            if error_r<= best_error_r:
+            if error_r<= best_error:
                 best_error = error_r
                 state = {'epoch': epoch+1,
                          'model_state': model.state_dict(),

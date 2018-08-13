@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-07-27 23:05:42
+# @Last Modified time: 2018-08-10 11:14:18
 
 
 import os
@@ -68,6 +68,7 @@ class NYU(data.Dataset):
             data=data[0,:,:,:]
         print(data.shape)
         img = data[:,:,0:3]
+        img=img[:,:,::-1]
         #dis=readPFM(disparity_path)
         #dis=np.array(dis[0], dtype=np.uint8)
 

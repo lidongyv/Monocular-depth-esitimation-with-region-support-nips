@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-13 16:31:03
+# @Last Modified time: 2018-08-11 20:08:26
 
 import torch
 import numpy as np
@@ -147,9 +147,9 @@ class rsn_cluster(nn.Module):
         #self.dropout = nn.Dropout2d(p=0.1, inplace=True)
         self.deconv0 = conv2DGroupNormRelu(in_channels=512, k_size=3, n_filters=256,
                                                 padding=1, stride=1, bias=False,group_dim=group_dim)        
-        # self.deconv1 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=256,
-        #                                          padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.deconv2 = up2DGroupNormRelu(in_channels=256, n_filters=128, k_size=3, 
+        self.deconv1 = conv2DGroupNormRelu(in_channels=256, k_size=3, n_filters=128,
+                                                 padding=1, stride=1, bias=False,group_dim=group_dim)
+        self.deconv2 = up2DGroupNormRelu(in_channels=128, n_filters=128, k_size=3, 
                                                  stride=1, padding=1, bias=False,group_dim=group_dim)
         self.regress1 = conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=128,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
@@ -167,7 +167,7 @@ class rsn_cluster(nn.Module):
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
         self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
-        self.class3= conv2D(in_channels=64, k_size=3, n_filters=32,
+        self.class3= conv2DGroupNormRelu(in_channels=64, k_size=3, n_filters=32,
                                                  padding=1, stride=1, bias=False,group_dim=16)        
         self.class4= conv2D(in_channels=32, k_size=3, n_filters=16,
                                                  padding=1, stride=1, bias=False,group_dim=16)
@@ -223,7 +223,7 @@ class rsn_cluster(nn.Module):
         #x = self.dropout(x)
         x = self.deconv0(x)
      
-        # x = self.deconv1(x)
+        x = self.deconv1(x)
        
         x = self.deconv2(x)
        
