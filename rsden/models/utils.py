@@ -235,7 +235,7 @@ class pyramidPoolingGroupNorm(nn.Module):
 
 class pyramidPooling(nn.Module):
 
-    def __init__(self, in_channels, pool_sizes):
+    def __init__(self, in_channels, pool_sizes,group_dim):
         super(pyramidPooling, self).__init__()
 
         self.paths = []
@@ -260,7 +260,7 @@ class pyramidPooling(nn.Module):
         return torch.cat(output_slices, dim=1)
 class pyramidPooling_witoutbn(nn.Module):
 
-    def __init__(self, in_channels, pool_sizes):
+    def __init__(self, in_channels, pool_sizes,group_dim):
         super(pyramidPooling_witoutbn, self).__init__()
 
         self.paths = []

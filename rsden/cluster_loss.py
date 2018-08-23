@@ -2,14 +2,14 @@
 # @Author: lidong
 # @Date:   2018-03-18 16:31:14
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-02 17:03:53
+# @Last Modified time: 2018-08-21 16:06:45
 
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-def cluster_loss(feature,segment,lvar=0.5,dis=1.5):
+def cluster_loss(feature,segment,lvar=0.16,dis=0.7):
     lvar=torch.tensor(lvar).float().cuda()
     dis=torch.tensor(dis).float().cuda()
     #segment=torch.squeeze(segment)

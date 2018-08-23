@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-07-31 20:35:41
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-07 23:04:58
+# @Last Modified time: 2018-08-20 22:26:38
 import os
 import numpy as np
 import time
@@ -87,7 +87,7 @@ def fuse_mask(n_mask,r_mask):
         n_mask=torch.where(n_mask==i,region,n_mask)
     n_mask=-n_mask
     return n_mask
-def fast_cluster(feature,bandwidth=0.7):
+def fast_cluster(feature,bandwidth=0.16):
     masks=[]
     areas=[]
     segments=[]

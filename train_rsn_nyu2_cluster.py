@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-18 13:41:34
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-11 13:16:40
+# @Last Modified time: 2018-08-23 09:47:12
 import sys
 import torch
 import visdom
@@ -53,22 +53,22 @@ def train(args):
         vis = visdom.Visdom()
 
 
-        depth_window = vis.image(
-            np.random.rand(480, 640),
-            opts=dict(title='depth!', caption='depth.'),
-        )
-        cluster_window = vis.image(
-            np.random.rand(480, 640),
-            opts=dict(title='cluster!', caption='cluster.'),
-        )
-        region_window = vis.image(
-            np.random.rand(480, 640),
-            opts=dict(title='region!', caption='region.'),
-        )
-        ground_window = vis.image(
-            np.random.rand(480, 640),
-            opts=dict(title='ground!', caption='ground.'),
-        )
+        # depth_window = vis.image(
+        #     np.random.rand(480, 640),
+        #     opts=dict(title='depth!', caption='depth.'),
+        # )
+        # cluster_window = vis.image(
+        #     np.random.rand(480, 640),
+        #     opts=dict(title='cluster!', caption='cluster.'),
+        # )
+        # region_window = vis.image(
+        #     np.random.rand(480, 640),
+        #     opts=dict(title='region!', caption='region.'),
+        # )
+        # ground_window = vis.image(
+        #     np.random.rand(480, 640),
+        #     opts=dict(title='ground!', caption='ground.'),
+        # )
         loss_window = vis.line(X=torch.zeros((1,)).cpu(),
                                Y=torch.zeros((1)).cpu(),
                                opts=dict(xlabel='minibatches',
@@ -103,6 +103,7 @@ def train(args):
         #     model.parameters(), lr=args.l_rate,weight_decay=5e-4,betas=(0.9,0.999))
         optimizer = torch.optim.SGD(
             model.parameters(), lr=args.l_rate,momentum=0.90, weight_decay=5e-4)
+    #scheduler=torch.optim.lr_scheduler.StepLR(optimizer,step_size=30,gamma=0.5)
     if hasattr(model.module, 'loss'):
         print('Using custom loss')
         loss_fn = model.module.loss
@@ -168,7 +169,7 @@ def train(args):
         #print(pre_dict)
         model_dict.update(pre_dict)
         model.load_state_dict(model_dict)
-        #optimizer.load_state_dict(rsn['optimizer_state'])
+        optimizer.load_state_dict(rsn['optimizer_state'])
         trained=rsn['epoch']
         best_error_r=rsn['error_r']+0.1
         #best_error_d=checkpoint['error_d']
@@ -187,7 +188,7 @@ def train(args):
     # it should be range(checkpoint[''epoch],args.n_epoch)
     for epoch in range(trained, args.n_epoch):
     #for epoch in range(0, args.n_epoch):
-        
+        #scheduler.step()
         #trained
         print('training!')
         model.train()
@@ -223,46 +224,51 @@ def train(args):
                         Y=loss.item()*torch.ones(1).cpu(),
                         win=loss_window,
                         update='append')
-                    depth = segments.data.cpu().numpy().astype('float32')
-                    depth = depth[0, :, :, :]
-                    depth = (np.reshape(depth, [480, 640]).astype('float32')-np.min(depth))/(np.max(depth)-np.min(depth)+1)
-                    vis.image(
-                        depth,
-                        opts=dict(title='depth!', caption='depth.'),
-                        win=depth_window,
-                    )
+                    # depth = segments.data.cpu().numpy().astype('float32')
+                    # depth = depth[0, :, :, :]
+                    # depth = (np.reshape(depth, [480, 640]).astype('float32')-np.min(depth))/(np.max(depth)-np.min(depth)+1)
+                    # vis.image(
+                    #     depth,
+                    #     opts=dict(title='depth!', caption='depth.'),
+                    #     win=depth_window,
+                    # )
 
-                    region = regions.data.cpu().numpy().astype('float32')
-                    region = region[0,...]
-                    region = (np.reshape(region, [480, 640]).astype('float32')-np.min(region))/(np.max(region)-np.min(region)+1)
-                    vis.image(
-                        region,
-                        opts=dict(title='region!', caption='region.'),
-                        win=region_window,
-                    )                 
-                    ground=labels.data.cpu().numpy().astype('float32')
-                    ground = ground[0, :, :]
-                    ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
-                    vis.image(
-                        ground,
-                        opts=dict(title='ground!', caption='ground.'),
-                        win=ground_window,
-                    )
+                    # region = regions.data.cpu().numpy().astype('float32')
+                    # region = region[0,...]
+                    # region = (np.reshape(region, [480, 640]).astype('float32')-np.min(region))/(np.max(region)-np.min(region)+1)
+                    # vis.image(
+                    #     region,
+                    #     opts=dict(title='region!', caption='region.'),
+                    #     win=region_window,
+                    # )                 
+                    # ground=labels.data.cpu().numpy().astype('float32')
+                    # ground = ground[0, :, :]
+                    # ground = (np.reshape(ground, [480, 640]).astype('float32')-np.min(ground))/(np.max(ground)-np.min(ground)+1)
+                    # vis.image(
+                    #     ground,
+                    #     opts=dict(title='ground!', caption='ground.'),
+                    #     win=ground_window,
+                    # )
             loss_rec.append([i+epoch*179,torch.Tensor([loss.item()]).unsqueeze(0).cpu()])
 
             print("data [%d/179/%d/%d] Loss: %.4f loss_var: %.4f loss_dis: %.4f loss_reg: %.4f " % (i, epoch, args.n_epoch,loss.item(), \
-                                torch.sum(loss_var).item()/4,torch.sum(loss_dis).item()/4,0.001*torch.sum(loss_reg).item()/4))
+                                torch.sum(loss_var).item()/feature.shape[0],torch.sum(loss_dis).item()/feature.shape[0],0.001*torch.sum(loss_reg).item()/feature.shape[0]))
             # print("data [%d/179/%d/%d] Loss: %.4f linear: %.4f " % (i, epoch, args.n_epoch,loss.item(),lin.item()
             #                    ))
         
-        if epoch>30:
+        if epoch>40:
             check=3
+            #scheduler=torch.optim.lr_scheduler.StepLR(optimizer,step_size=30,gamma=0.5)
         else:
             check=5
-        if epoch>50:
-            check=2
+            #scheduler=torch.optim.lr_scheduler.StepLR(optimizer,step_size=15,gamma=1)
         if epoch>70:
-            check=1   
+            check=2
+            #scheduler=torch.optim.lr_scheduler.StepLR(optimizer,step_size=15,gamma=0.25)
+        if epoch>90:
+            check=1
+        check=1
+            #scheduler=torch.optim.lr_scheduler.StepLR(optimizer,step_size=30,gamma=0.1)  
         #epoch=3          
         if epoch%check==0:
                 
@@ -389,16 +395,16 @@ def train(args):
             np.save('/home/lidong/Documents/RSDEN/RSDEN/loss.npy',loss_rec)
 
 
-        if epoch%15==0:
-            #best_error = error
-            state = {'epoch': epoch+1,
-                     'model_state': model.state_dict(),
-                     'optimizer_state': optimizer.state_dict(), 
-                     'error': error_r,
-                     'error_r': error_r,}
-            torch.save(state, "{}_{}_{}_model.pkl".format(
-                args.arch, args.dataset,str(epoch)))
-            print('save success')
+        # if epoch%15==0:
+        #     #best_error = error
+        #     state = {'epoch': epoch+1,
+        #              'model_state': model.state_dict(),
+        #              'optimizer_state': optimizer.state_dict(), 
+        #              'error': error_r,
+        #              'error_r': error_r,}
+        #     torch.save(state, "{}_{}_{}_model.pkl".format(
+        #         args.arch, args.dataset,str(epoch)))
+        #     print('save success')
 
 
 
@@ -418,7 +424,7 @@ if __name__ == '__main__':
                         help='# of the epochs')
     parser.add_argument('--batch_size', nargs='?', type=int, default=4,
                         help='Batch Size')
-    parser.add_argument('--l_rate', nargs='?', type=float, default=1e-3,
+    parser.add_argument('--l_rate', nargs='?', type=float, default=1e-4,
                         help='Learning Rate')
     parser.add_argument('--feature_scale', nargs='?', type=int, default=1,
                         help='Divider for # of features to use')

@@ -2,7 +2,7 @@
 # @Author: lidong
 # @Date:   2018-03-20 18:01:52
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-22 10:02:06
+# @Last Modified time: 2018-08-20 22:30:17
 
 import torch
 import numpy as np
@@ -22,7 +22,7 @@ rsn_specs = {
     },
 
 }
-group_dim=4
+group_dim=16
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
 
@@ -168,7 +168,7 @@ class rsn_cluster(nn.Module):
         self.class2= conv2DGroupNormRelu(in_channels=128, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False,group_dim=group_dim)
         self.class3= conv2DGroupNormRelu(in_channels=64, k_size=3, n_filters=32,
-                                                 padding=1, stride=1, bias=False,group_dim=group_dim)        
+                                                 padding=1, stride=1, bias=False,group_dim=16)        
         self.class4= conv2D(in_channels=32, k_size=1, n_filters=16,
                                                  padding=0, stride=1, bias=False,group_dim=16)
         # self.class5= conv2DGroupNorm(in_channels=16, k_size=1, n_filters=8,

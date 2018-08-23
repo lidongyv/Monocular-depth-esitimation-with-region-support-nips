@@ -2,7 +2,7 @@
 # @Author: yulidong
 # @Date:   2018-04-25 23:06:40
 # @Last Modified by:   yulidong
-# @Last Modified time: 2018-08-10 11:13:39
+# @Last Modified time: 2018-08-20 20:50:13
 
 
 import os
@@ -54,7 +54,7 @@ class NYU2(data.Dataset):
         if task=='region':
             self.d=3
             self.r=5
-            self.m=7                  
+            self.m=6                
     def __len__(self):
         """__len__"""
         return len(self.files)
